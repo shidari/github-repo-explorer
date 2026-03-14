@@ -63,10 +63,7 @@ export class DetailApp extends Effect.Service<DetailApp>()("DetailApp", {
             Effect.match({
               onSuccess: (data) => c.json(data),
               onFailure: (err) =>
-                c.json(
-                  { message: `${err.owner}/${err.repo} not found` },
-                  404,
-                ),
+                c.json({ message: `${err.owner}/${err.repo} not found` }, 404),
             }),
           ),
         );

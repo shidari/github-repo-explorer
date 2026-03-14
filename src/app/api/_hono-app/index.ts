@@ -12,12 +12,12 @@ export class MainApp extends Effect.Service<MainApp>()("MainApp", {
     const searchApp = yield* SearchApp;
     const detailApp = yield* DetailApp;
 
-    const app = new Hono();
+    const app = new Hono()
+      .route("/search", searchApp)
+      .route("/repos", detailApp);
 
     app.get("/", (c) => c.redirect("/doc"));
     app.get("/doc", swaggerUI({ url: "/openapi" }));
-    app.route("/search", searchApp);
-    app.route("/repos", detailApp);
     app.get(
       "/openapi",
       openAPIRouteHandler(app, {
