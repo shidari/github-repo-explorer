@@ -14,6 +14,8 @@
   - Include body explaining the change
 - **Package Manager**: pnpm
 - **CLI実行**: `npx` ではなく `pnpm exec` を使うこと
+- **GitHub CLI**: `gh` は直接実行せず `devbox run gh` で実行すること
+- **PR body**: バッククォート等の特殊文字を含む場合は `--body-file` を使うこと（`--body` でのインライン指定は禁止）
 - **修正作業の開始前**: コードの修正・追加を始める前に、まず `git pull --rebase` で最新の状態にすること
 - **コミットフロー（MUST）**: ユーザーが「コミット」「コミットして」等を依頼した場合、直接 `git commit` を実行してはならない。必ず `.claude/commands/commit-and-pr.md` に定義されたフロー全体（Pre-commit チェック → コミット → ブランチ作成 & Push → PR 作成）を実行すること
 - **コミット後の自動PR**: コミット完了後、以下を自動実行する
