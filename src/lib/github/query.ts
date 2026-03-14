@@ -10,11 +10,15 @@ export class RepoNotFoundError extends Data.TaggedError("RepoNotFoundError")<{
   repo: string;
 }> {}
 
-export class SearchNoResultError extends Data.TaggedError("SearchNoResultError")<{
+export class SearchNoResultError extends Data.TaggedError(
+  "SearchNoResultError",
+)<{
   query: string;
 }> {}
 
-export class PageOutOfRangeError extends Data.TaggedError("PageOutOfRangeError")<{
+export class PageOutOfRangeError extends Data.TaggedError(
+  "PageOutOfRangeError",
+)<{
   page: number;
   totalPages: number;
 }> {}
@@ -36,7 +40,10 @@ export class SearchReposQuery extends Context.Tag("SearchReposQuery")<
       query: string;
       page: number;
       perPage: number;
-    }) => Effect.Effect<SearchReposResult, SearchNoResultError | PageOutOfRangeError>;
+    }) => Effect.Effect<
+      SearchReposResult,
+      SearchNoResultError | PageOutOfRangeError
+    >;
   }
 >() {
   static readonly Test = Layer.succeed(SearchReposQuery, {
@@ -45,14 +52,17 @@ export class SearchReposQuery extends Context.Tag("SearchReposQuery")<
         const filtered = mockTestRepos.filter(
           (r) =>
             r.full_name.toLowerCase().includes(query.toLowerCase()) ||
-            (r.description?.toLowerCase().includes(query.toLowerCase()) ?? false),
+            (r.description?.toLowerCase().includes(query.toLowerCase()) ??
+              false),
         );
         if (filtered.length === 0) {
           return yield* Effect.fail(new SearchNoResultError({ query }));
         }
         const totalPages = Math.ceil(filtered.length / perPage);
         if (page > totalPages) {
-          return yield* Effect.fail(new PageOutOfRangeError({ page, totalPages }));
+          return yield* Effect.fail(
+            new PageOutOfRangeError({ page, totalPages }),
+          );
         }
         const start = (page - 1) * perPage;
         return yield* Schema.decodeUnknown(SearchReposResult)({
@@ -65,7 +75,9 @@ export class SearchReposQuery extends Context.Tag("SearchReposQuery")<
 
 // ── 詳細取得 ──
 
-export class GetRepoByFullNameQuery extends Context.Tag("GetRepoByFullNameQuery")<
+export class GetRepoByFullNameQuery extends Context.Tag(
+  "GetRepoByFullNameQuery",
+)<
   GetRepoByFullNameQuery,
   {
     readonly runAction: (params: {

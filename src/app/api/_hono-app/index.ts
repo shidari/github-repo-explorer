@@ -18,11 +18,14 @@ export class MainApp extends Effect.Service<MainApp>()("MainApp", {
     app.get("/doc", swaggerUI({ url: "/openapi" }));
     app.route("/search", searchApp);
     app.route("/repos", detailApp);
-    app.get("/openapi", openAPIRouteHandler(app, {
-      documentation: {
-        info: { title: "GitHub Repo Explorer API", version: "0.1.0" },
-      },
-    }));
+    app.get(
+      "/openapi",
+      openAPIRouteHandler(app, {
+        documentation: {
+          info: { title: "GitHub Repo Explorer API", version: "0.1.0" },
+        },
+      }),
+    );
 
     return app;
   }),
@@ -37,7 +40,7 @@ export const app = Effect.runSync(
     Effect.provide(MainApp.Default),
     Effect.provide(SearchApp.Default),
     Effect.provide(DetailApp.Default),
-    Effect.provide(SearchReposQuery.Test),       // mock: 検索
+    Effect.provide(SearchReposQuery.Test), // mock: 検索
     Effect.provide(GetRepoByFullNameQuery.Test), // mock: 詳細取得
   ),
 );

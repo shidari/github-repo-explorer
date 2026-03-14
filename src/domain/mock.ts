@@ -8,12 +8,35 @@ export const mockAvatarUrl = () => (fc: typeof FastCheck) =>
 
 export const mockOwner = () => (fc: typeof FastCheck) =>
   fc.record({
-    username: fc.constantFrom("facebook", "vercel", "microsoft", "honojs", "Effect-TS"),
+    username: fc.constantFrom(
+      "facebook",
+      "vercel",
+      "microsoft",
+      "honojs",
+      "Effect-TS",
+    ),
     avatar_url: fc.constant(null).map(() => faker.image.avatar()),
   });
 
-const OWNERS = ["facebook", "vercel", "microsoft", "honojs", "Effect-TS"] as const;
-const REPOS = ["react", "next.js", "typescript", "hono", "effect", "vue", "svelte", "vite", "node", "deno"] as const;
+const OWNERS = [
+  "facebook",
+  "vercel",
+  "microsoft",
+  "honojs",
+  "Effect-TS",
+] as const;
+const REPOS = [
+  "react",
+  "next.js",
+  "typescript",
+  "hono",
+  "effect",
+  "vue",
+  "svelte",
+  "vite",
+  "node",
+  "deno",
+] as const;
 const DESCRIPTIONS = [
   "A library for building user interfaces.",
   "The React Framework",
@@ -25,10 +48,9 @@ const LANGUAGES = ["JavaScript", "TypeScript", "Rust", "Go", null] as const;
 
 export const mockRepository = () => (fc: typeof FastCheck) =>
   fc.record({
-    full_name: fc.tuple(
-      fc.constantFrom(...OWNERS),
-      fc.constantFrom(...REPOS),
-    ).map(([owner, repo]) => `${owner}/${repo}`),
+    full_name: fc
+      .tuple(fc.constantFrom(...OWNERS), fc.constantFrom(...REPOS))
+      .map(([owner, repo]) => `${owner}/${repo}`),
     owner: fc.record({
       username: fc.constantFrom(...OWNERS),
       avatar_url: fc.constant(null).map(() => faker.image.avatar()),
@@ -39,5 +61,8 @@ export const mockRepository = () => (fc: typeof FastCheck) =>
     watchers_count: fc.integer({ min: 0, max: 50000 }),
     forks_count: fc.integer({ min: 0, max: 100000 }),
     open_issues_count: fc.integer({ min: 0, max: 50000 }),
-    updated_at: fc.date({ min: new Date("2020-01-01"), max: new Date("2026-03-15") }),
+    updated_at: fc.date({
+      min: new Date("2020-01-01"),
+      max: new Date("2026-03-15"),
+    }),
   });

@@ -25,7 +25,9 @@ export function RepoOverview({ repo }: { repo: IRepoOverview }) {
       )}
       <div className={styles.meta}>
         {repo.language && <Badge>{repo.language}</Badge>}
-        <span className={styles.stat}>&#9733; {formatCount(repo.stargazers_count)}</span>
+        <span className={styles.stat}>
+          &#9733; {formatCount(repo.stargazers_count)}
+        </span>
       </div>
     </div>
   );

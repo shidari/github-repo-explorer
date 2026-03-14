@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useRef, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import styles from "./SearchInput.module.css";
 
