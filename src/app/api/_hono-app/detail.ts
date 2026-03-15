@@ -54,7 +54,20 @@ export class DetailApp extends Effect.Service<DetailApp>()("DetailApp", {
     return new Hono().get(
       "/:owner/:repo",
       detailRoute,
-      effectValidator("param", Schema.standardSchemaV1(detailParamSchema)),
+      effectValidator(
+        "param",
+        Schema.standardSchemaV1(detailParamSchema),
+        (result, c) => {
+          if (!result.success) {
+            const raw = c.req.param();
+            return c.json(
+              { message: `Invalid path parameters: ${JSON.stringify(raw)}` },
+              400,
+            );
+          }
+          return undefined;
+        },
+      ),
       async (c) => {
         const { owner, repo } = c.req.valid("param");
 

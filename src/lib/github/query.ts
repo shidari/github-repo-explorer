@@ -1,7 +1,14 @@
+import { Octokit } from "@octokit/rest";
 import { Context, Data, Effect, Layer, Schema } from "effect";
-import type { Repository } from "@/domain";
+import { Repository } from "@/domain";
 import { RepoOverview } from "@/dto";
 import { mockTestRepos } from "./mock";
+
+// ── GitHub API クライアント ──
+
+const octokit = new Octokit({
+  auth: process.env.GITHUB_TOKEN,
+});
 
 // ── エラー ──
 
@@ -46,7 +53,50 @@ export class SearchReposQuery extends Context.Tag("SearchReposQuery")<
     >;
   }
 >() {
-  static readonly Test = Layer.succeed(SearchReposQuery, {
+  static readonly main = Layer.succeed(SearchReposQuery, {
+    runAction: ({ query, page, perPage }) =>
+      Effect.gen(function* () {
+        const res = yield* Effect.tryPromise({
+          try: () =>
+            octokit.search.repos({
+              q: query,
+              page,
+              per_page: perPage,
+            }),
+          catch: () => new SearchNoResultError({ query }),
+        });
+
+        const { total_count, items } = res.data;
+
+        if (total_count === 0) {
+          return yield* Effect.fail(new SearchNoResultError({ query }));
+        }
+
+        const totalPages = Math.ceil(total_count / perPage);
+        if (page > totalPages) {
+          return yield* Effect.fail(
+            new PageOutOfRangeError({ page, totalPages }),
+          );
+        }
+
+        return yield* Schema.decodeUnknown(SearchReposResult)({
+          total_count,
+          items: items.map((item) => ({
+            full_name: item.full_name,
+            html_url: item.html_url,
+            owner: {
+              username: item.owner?.login ?? "",
+              avatar_url: item.owner?.avatar_url ?? "",
+            },
+            description: item.description ?? undefined,
+            language: item.language ?? null,
+            stargazers_count: item.stargazers_count,
+          })),
+        }).pipe(Effect.orDie);
+      }),
+  });
+
+  static readonly test = Layer.succeed(SearchReposQuery, {
     runAction: ({ query, page, perPage }) =>
       Effect.gen(function* () {
         const filtered = mockTestRepos.filter(
@@ -86,7 +136,43 @@ export class GetRepoByFullNameQuery extends Context.Tag(
     }) => Effect.Effect<Repository, RepoNotFoundError>;
   }
 >() {
-  static readonly Test = Layer.succeed(GetRepoByFullNameQuery, {
+  static readonly main = Layer.succeed(GetRepoByFullNameQuery, {
+    runAction: ({ owner, repo }) =>
+      Effect.gen(function* () {
+        const res = yield* Effect.tryPromise({
+          try: () => octokit.repos.get({ owner, repo }),
+          catch: () => new RepoNotFoundError({ owner, repo }),
+        });
+
+        const r = res.data;
+
+        return yield* Schema.decodeUnknown(Repository)({
+          full_name: r.full_name,
+          html_url: r.html_url,
+          owner: {
+            username: r.owner?.login ?? "",
+            avatar_url: r.owner?.avatar_url ?? "",
+          },
+          description: r.description ?? undefined,
+          language: r.language ?? null,
+          stargazers_count: r.stargazers_count,
+          watchers_count: r.watchers_count,
+          forks_count: r.forks_count,
+          open_issues_count: r.open_issues_count,
+          topics: r.topics ?? [],
+          license: r.license
+            ? { key: r.license.key, name: r.license.name ?? r.license.key }
+            : undefined,
+          homepage: r.homepage || undefined,
+          default_branch: r.default_branch,
+          archived: r.archived,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+        }).pipe(Effect.orDie);
+      }),
+  });
+
+  static readonly test = Layer.succeed(GetRepoByFullNameQuery, {
     runAction: ({ owner, repo }) => {
       const found = mockTestRepos.find(
         (r) =>

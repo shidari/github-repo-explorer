@@ -17,7 +17,7 @@ export const NonNegativeIntFromString = Schema.NumberFromString.pipe(
 const PER_PAGE = 20;
 
 const searchQuerySchema = Schema.Struct({
-  q: Schema.optionalWith(Schema.String, { default: () => "" }).annotations({
+  q: Schema.String.pipe(Schema.nonEmptyString()).annotations({
     description: "検索キーワード",
   }),
   page: Schema.optionalWith(NonNegativeIntFromString, {
@@ -28,6 +28,12 @@ const searchQuerySchema = Schema.Struct({
 });
 
 // ── レスポンススキーマ ──
+
+const searchResponseSchema = Schema.Struct({
+  ...SearchReposResult.fields,
+  page: Schema.NonNegativeInt,
+  total_pages: Schema.NonNegativeInt,
+});
 
 const errorResponseSchema = Schema.Struct({
   message: Schema.String,
@@ -42,7 +48,7 @@ const searchRoute = describeRoute({
       description: "検索結果",
       content: {
         "application/json": {
-          schema: resolver(Schema.standardSchemaV1(SearchReposResult)),
+          schema: resolver(Schema.standardSchemaV1(searchResponseSchema)),
         },
       },
     },
@@ -74,7 +80,20 @@ export class SearchApp extends Effect.Service<SearchApp>()("SearchApp", {
     return new Hono().get(
       "/",
       searchRoute,
-      effectValidator("query", Schema.standardSchemaV1(searchQuerySchema)),
+      effectValidator(
+        "query",
+        Schema.standardSchemaV1(searchQuerySchema),
+        (result, c) => {
+          if (!result.success) {
+            const raw = c.req.query();
+            return c.json(
+              { message: `Invalid query parameters: ${JSON.stringify(raw)}` },
+              400,
+            );
+          }
+          return undefined;
+        },
+      ),
       async (c) => {
         const { q, page } = c.req.valid("query");
 
@@ -83,7 +102,12 @@ export class SearchApp extends Effect.Service<SearchApp>()("SearchApp", {
             .runAction({ query: q, page, perPage: PER_PAGE })
             .pipe(
               Effect.match({
-                onSuccess: (data) => c.json(data),
+                onSuccess: (data) =>
+                  c.json({
+                    ...data,
+                    page,
+                    total_pages: Math.ceil(data.total_count / PER_PAGE),
+                  }),
                 onFailure: (err) => {
                   switch (err._tag) {
                     case "SearchNoResultError":
