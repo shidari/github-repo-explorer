@@ -6,6 +6,7 @@ import { Repository } from "./domain";
 export const RepoOverview = Repository.pipe(
   Schema.pick(
     "full_name",
+    "html_url",
     "owner",
     "description",
     "language",

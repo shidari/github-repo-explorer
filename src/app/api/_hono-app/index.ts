@@ -32,7 +32,6 @@ export class MainApp extends Effect.Service<MainApp>()("MainApp", {
 }) {}
 
 // Layer を上から順に provide して依存を解決
-// TODO: GitHub API 接続時に Test → Live に差し替える
 export const app = Effect.runSync(
   Effect.gen(function* () {
     return yield* MainApp;
@@ -40,8 +39,9 @@ export const app = Effect.runSync(
     Effect.provide(MainApp.Default),
     Effect.provide(SearchApp.Default),
     Effect.provide(DetailApp.Default),
-    Effect.provide(SearchReposQuery.Test), // mock: 検索
-    Effect.provide(GetRepoByFullNameQuery.Test), // mock: 詳細取得
+    // TODO: rate limit 実装後に .main に切り替える
+    Effect.provide(SearchReposQuery.test),
+    Effect.provide(GetRepoByFullNameQuery.test),
   ),
 );
 
