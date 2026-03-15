@@ -9,6 +9,11 @@ const OWNERS = [
   "microsoft",
   "honojs",
   "Effect-TS",
+  "google",
+  "apple",
+  "denoland",
+  "vuejs",
+  "sveltejs",
 ] as const;
 const REPOS = [
   "react",
@@ -21,6 +26,16 @@ const REPOS = [
   "vite",
   "node",
   "deno",
+  "remix",
+  "angular",
+  "bun",
+  "astro",
+  "nuxt",
+  "solid",
+  "preact",
+  "qwik",
+  "fresh",
+  "htmx",
 ] as const;
 const DESCRIPTIONS = [
   "A library for building user interfaces.",
