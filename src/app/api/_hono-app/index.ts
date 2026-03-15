@@ -2,7 +2,7 @@ import { swaggerUI } from "@hono/swagger-ui";
 import { Effect } from "effect";
 import { Hono } from "hono";
 import { openAPIRouteHandler } from "hono-openapi";
-import { GetRepoByFullNameQuery, SearchReposQuery } from "@/lib/github/query";
+import { GetRepoByFullNameQuery, SearchReposQuery } from "@/query";
 import { DetailApp } from "./detail";
 import { SearchApp } from "./search";
 
@@ -13,6 +13,7 @@ export class MainApp extends Effect.Service<MainApp>()("MainApp", {
     const detailApp = yield* DetailApp;
 
     const app = new Hono()
+      .basePath("/api")
       .route("/search", searchApp)
       .route("/repos", detailApp);
 
@@ -27,14 +28,17 @@ export class MainApp extends Effect.Service<MainApp>()("MainApp", {
       }),
     );
 
-    return app;
+    // 直接 Hono インスタンスを返すと Effect.Service の型として推論され
+    // RPC クライアントの型が解決できなくなるため、オブジェクトで包む
+    return { app };
   }),
 }) {}
 
 // Layer を上から順に provide して依存を解決
 export const app = Effect.runSync(
   Effect.gen(function* () {
-    return yield* MainApp;
+    const { app } = yield* MainApp;
+    return app;
   }).pipe(
     Effect.provide(MainApp.Default),
     Effect.provide(SearchApp.Default),

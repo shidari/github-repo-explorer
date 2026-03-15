@@ -99,6 +99,7 @@ export class SearchReposQuery extends Context.Tag("SearchReposQuery")<
   static readonly test = Layer.succeed(SearchReposQuery, {
     runAction: ({ query, page, perPage }) =>
       Effect.gen(function* () {
+        yield* Effect.sleep("2 seconds");
         const filtered = mockTestRepos.filter(
           (r) =>
             r.full_name.toLowerCase().includes(query.toLowerCase()) ||
@@ -173,15 +174,17 @@ export class GetRepoByFullNameQuery extends Context.Tag(
   });
 
   static readonly test = Layer.succeed(GetRepoByFullNameQuery, {
-    runAction: ({ owner, repo }) => {
-      const found = mockTestRepos.find(
-        (r) =>
-          r.owner.username.toLowerCase() === owner.toLowerCase() &&
-          r.full_name.split("/")[1].toLowerCase() === repo.toLowerCase(),
-      );
-      return found
-        ? Effect.succeed(found)
-        : Effect.fail(new RepoNotFoundError({ owner, repo }));
-    },
+    runAction: ({ owner, repo }) =>
+      Effect.gen(function* () {
+        yield* Effect.sleep("2 seconds");
+        const found = mockTestRepos.find(
+          (r) =>
+            r.owner.username.toLowerCase() === owner.toLowerCase() &&
+            r.full_name.split("/")[1].toLowerCase() === repo.toLowerCase(),
+        );
+        return found
+          ? found
+          : yield* Effect.fail(new RepoNotFoundError({ owner, repo }));
+      }),
   });
 }

@@ -1,10 +1,11 @@
-import Link from "next/link";
+"use client";
+
 import styles from "./pagination.module.css";
 
 type PaginationProps = {
   currentPage: number;
   totalPages: number;
-  baseHref: string;
+  onPageChange: (page: number) => void;
 };
 
 function pageNumbers(current: number, total: number): (number | "...")[] {
@@ -31,7 +32,7 @@ function pageNumbers(current: number, total: number): (number | "...")[] {
 export function Pagination({
   currentPage,
   totalPages,
-  baseHref,
+  onPageChange,
 }: PaginationProps) {
   if (totalPages <= 1) return null;
 
@@ -39,14 +40,14 @@ export function Pagination({
 
   return (
     <nav className={styles.pagination} aria-label="Pagination">
-      <Link
-        href={`${baseHref}&page=${currentPage - 1}`}
+      <button
+        type="button"
         className={`${styles.page} ${currentPage <= 1 ? styles.disabled : ""}`}
-        aria-disabled={currentPage <= 1}
-        tabIndex={currentPage <= 1 ? -1 : undefined}
+        disabled={currentPage <= 1}
+        onClick={() => onPageChange(currentPage - 1)}
       >
         Prev
-      </Link>
+      </button>
       {pages.map((p, i) =>
         p === "..." ? (
           <span
@@ -56,24 +57,25 @@ export function Pagination({
             ...
           </span>
         ) : (
-          <Link
+          <button
             key={p}
-            href={`${baseHref}&page=${p}`}
+            type="button"
             className={`${styles.page} ${p === currentPage ? styles.active : ""}`}
             aria-current={p === currentPage ? "page" : undefined}
+            onClick={() => onPageChange(p)}
           >
             {p}
-          </Link>
+          </button>
         ),
       )}
-      <Link
-        href={`${baseHref}&page=${currentPage + 1}`}
+      <button
+        type="button"
         className={`${styles.page} ${currentPage >= totalPages ? styles.disabled : ""}`}
-        aria-disabled={currentPage >= totalPages}
-        tabIndex={currentPage >= totalPages ? -1 : undefined}
+        disabled={currentPage >= totalPages}
+        onClick={() => onPageChange(currentPage + 1)}
       >
         Next
-      </Link>
+      </button>
     </nav>
   );
 }

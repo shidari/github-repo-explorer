@@ -6,7 +6,7 @@ import {
   resolver,
 } from "hono-openapi";
 import { Repository } from "@/domain";
-import { GetRepoByFullNameQuery } from "@/lib/github/query";
+import { GetRepoByFullNameQuery } from "@/query";
 
 // ── リクエストスキーマ ──
 
@@ -50,8 +50,7 @@ const detailRoute = describeRoute({
 export class DetailApp extends Effect.Service<DetailApp>()("DetailApp", {
   effect: Effect.gen(function* () {
     const getRepoByFullNameQuery = yield* GetRepoByFullNameQuery;
-
-    return new Hono().get(
+    const app = new Hono().get(
       "/:owner/:repo",
       detailRoute,
       effectValidator(
@@ -82,5 +81,6 @@ export class DetailApp extends Effect.Service<DetailApp>()("DetailApp", {
         );
       },
     );
+    return app;
   }),
 }) {}

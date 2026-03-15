@@ -1,0 +1,46 @@
+.container {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.resultHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.count {
+  font-size: 0.875rem;
+  color: var(--muted-foreground, #6b7280);
+}
+
+.repoLink {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.repoLink:hover {
+  opacity: 0.85;
+}
+
+.empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--muted-foreground, #6b7280);
+}
+
+.emptyTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}

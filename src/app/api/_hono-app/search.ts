@@ -5,7 +5,7 @@ import {
   validator as effectValidator,
   resolver,
 } from "hono-openapi";
-import { SearchReposQuery, SearchReposResult } from "@/lib/github/query";
+import { SearchReposQuery, SearchReposResult } from "@/query";
 
 // ── リクエストスキーマ ──
 
@@ -76,8 +76,7 @@ const searchRoute = describeRoute({
 export class SearchApp extends Effect.Service<SearchApp>()("SearchApp", {
   effect: Effect.gen(function* () {
     const searchReposQuery = yield* SearchReposQuery;
-
-    return new Hono().get(
+    const app = new Hono().get(
       "/",
       searchRoute,
       effectValidator(
@@ -103,11 +102,14 @@ export class SearchApp extends Effect.Service<SearchApp>()("SearchApp", {
             .pipe(
               Effect.match({
                 onSuccess: (data) =>
-                  c.json({
-                    ...data,
-                    page,
-                    total_pages: Math.ceil(data.total_count / PER_PAGE),
-                  }),
+                  c.json(
+                    {
+                      ...data,
+                      page,
+                      total_pages: Math.ceil(data.total_count / PER_PAGE),
+                    },
+                    200,
+                  ),
                 onFailure: (err) => {
                   switch (err._tag) {
                     case "SearchNoResultError":
@@ -131,5 +133,6 @@ export class SearchApp extends Effect.Service<SearchApp>()("SearchApp", {
         );
       },
     );
+    return app;
   }),
 }) {}
