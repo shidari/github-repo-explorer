@@ -1,7 +1,8 @@
 "use client";
 
+import { useAtom } from "jotai";
 import Link from "next/link";
-import { Fragment, Suspense, useEffect, useState } from "react";
+import { Fragment, Suspense } from "react";
 
 import useSWR from "swr";
 import { client } from "@/app/api/_client";
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/item";
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
+import { searchPageAtom, searchQueryAtom } from "./atoms";
 import styles from "./page.module.css";
 
 async function fetcher([, q, page]: [string, string, number]) {
@@ -38,41 +40,13 @@ async function fetcher([, q, page]: [string, string, number]) {
 
 const DEBOUNCE_MS = 300;
 
-const STORAGE_KEY = "search-state";
-
 export default function SearchPage() {
-  const [query, setQuery] = useState("");
-  const [page, setPage] = useState(1);
-  const [restored, setRestored] = useState(false);
-
-  // チラつかないためにレンダリングフェイズ（useState の初期値）で sessionStorage を読みたいが、
-  // hydration エラーが出ていた可能性があり、useEffect に移したところ解消した。
-  // これが原因かは確証がない。
-  // 副作用として空→復元の 2 回レンダーによるチラつきがある。
-  // TODO: 原因の特定とチラつきの解消
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw);
-        if (saved.query) setQuery(saved.query);
-        if (saved.page) setPage(saved.page);
-      }
-    } catch (e) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("sessionStorage の読み込みに失敗:", e);
-      }
-    }
-    setRestored(true);
-  }, []);
+  const [query, setQuery] = useAtom(searchQueryAtom);
+  const [page, setPage] = useAtom(searchPageAtom);
 
   return (
     <>
-      <SearchInput
-        key={restored ? "restored" : "initial"}
-        defaultValue={query}
-        onInputChange={setQuery}
-      />
+      <SearchInput defaultValue={query} onInputChange={setQuery} />
 
       {query ? (
         <Suspense fallback={<SearchSkeleton />}>
@@ -99,10 +73,6 @@ function SearchResult({
   const { data: result } = useSWR(["search", query, page], fetcher, {
     suspense: true,
   });
-
-  useEffect(() => {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ query, page }));
-  }, [query, page]);
 
   if (!result.ok) {
     return (
