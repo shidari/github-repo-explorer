@@ -10,9 +10,7 @@ export class MainApp extends Effect.Service<MainApp>()("MainApp", {
   effect: Effect.gen(function* () {
     const searchApp = yield* SearchApp;
 
-    const app = new Hono()
-      .basePath("/api")
-      .route("/search", searchApp);
+    const app = new Hono().basePath("/api").route("/search", searchApp);
 
     app.get("/", (c) => c.redirect("/doc"));
     app.get("/doc", swaggerUI({ url: "/openapi" }));
