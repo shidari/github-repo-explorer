@@ -10,7 +10,7 @@
 - **Formatting/Linting**: Biome を使用（staged ファイルのみ対象。プロジェクト全体への実行は禁止）
 - **Commits**: Conventional Commits format
   - Message in Japanese
-  - Include scope (e.g., `feat(search): リポジトリ検索機能を追加`)
+  - monorepo でない場合は scope 不要（例: `feat: リポジトリ検索機能を追加`）
   - Include body explaining the change
 - **Package Manager**: pnpm
 - **CLI実行**: `npx` ではなく `pnpm exec` を使うこと
@@ -22,3 +22,4 @@
   1. main ブランチ上なら、コミット内容に基づいたブランチ名（例: `feat/xxx`, `refactor/xxx`）を自動作成し、コミットをそのブランチに移動する
   2. `git push -u origin <branch>` でリモートに push
   3. そのブランチの PR が未作成なら `gh pr create` で PR を作成する（既存なら push のみ）
+  4. PR が既存の場合は、コミット内容を反映して PR の body を更新する

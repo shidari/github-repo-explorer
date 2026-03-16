@@ -5,7 +5,7 @@ import {
   validator as effectValidator,
   resolver,
 } from "hono-openapi";
-import { SearchReposQuery, SearchReposResult } from "@/query";
+import { SearchReposQuery, SearchReposResult } from "@/repository/query";
 
 // ── リクエストスキーマ ──
 
