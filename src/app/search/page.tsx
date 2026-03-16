@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, Suspense, useDeferredValue, useState } from "react";
+import { Fragment, Suspense, useState } from "react";
 import useSWR from "swr";
 import { client } from "@/app/api/_client";
+import { Debounce } from "@/components/debounce";
 import { formatCount } from "@/components/features/search/RepoOverview";
 import { SearchInput } from "@/components/features/search/SearchInput";
 import { Avatar } from "@/components/ui/avatar";
@@ -34,30 +35,25 @@ async function fetcher([, q, page]: [string, string, number]) {
   return { ok: true as const, data };
 }
 
+const DEBOUNCE_MS = 300;
+
 export default function SearchPage() {
   const [query, setQuery] = useState("");
-  // TODO: network request の頻度制御のため debounce の導入を検討する
-  const deferredQuery = useDeferredValue(query);
   const [page, setPage] = useState(1);
-  const isPending = query !== deferredQuery;
 
   return (
     <>
       <SearchInput defaultValue="" onInputChange={setQuery} />
 
-      {(() => {
-        if (!query && !deferredQuery) return <EmptyState />;
-        if (isPending) return <SearchSkeleton />;
-        return (
-          <Suspense fallback={<SearchSkeleton />}>
-            <SearchResult
-              query={deferredQuery}
-              page={page}
-              onPageChange={setPage}
-            />
-          </Suspense>
-        );
-      })()}
+      {query ? (
+        <Suspense fallback={<SearchSkeleton />}>
+          <Debounce debounceKey={query} ms={DEBOUNCE_MS}>
+            <SearchResult query={query} page={page} onPageChange={setPage} />
+          </Debounce>
+        </Suspense>
+      ) : (
+        <EmptyState />
+      )}
     </>
   );
 }
