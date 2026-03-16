@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Fragment, Suspense, useDeferredValue, useState } from "react";
 import useSWR from "swr";
-import { createClient } from "@/client";
+import { client } from "@/app/api/_client";
 import { formatCount } from "@/components/features/search/RepoOverview";
 import { SearchInput } from "@/components/features/search/SearchInput";
 import { Avatar } from "@/components/ui/avatar";
@@ -21,10 +21,6 @@ import {
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import styles from "./page.module.css";
-
-const client = createClient(
-  process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-);
 
 async function fetcher([, q, page]: [string, string, number]) {
   const res = await client.api.search.$get({

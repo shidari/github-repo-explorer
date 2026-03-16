@@ -2,20 +2,15 @@ import { swaggerUI } from "@hono/swagger-ui";
 import { Effect } from "effect";
 import { Hono } from "hono";
 import { openAPIRouteHandler } from "hono-openapi";
-import { GetRepoByFullNameQuery, SearchReposQuery } from "@/query";
-import { DetailApp } from "./detail";
+import { SearchReposQuery } from "@/query";
 import { SearchApp } from "./search";
 
-// SearchApp, DetailApp を合成した Hono アプリケーション
+// SearchApp を合成した Hono アプリケーション
 export class MainApp extends Effect.Service<MainApp>()("MainApp", {
   effect: Effect.gen(function* () {
     const searchApp = yield* SearchApp;
-    const detailApp = yield* DetailApp;
 
-    const app = new Hono()
-      .basePath("/api")
-      .route("/search", searchApp)
-      .route("/repos", detailApp);
+    const app = new Hono().basePath("/api").route("/search", searchApp);
 
     app.get("/", (c) => c.redirect("/doc"));
     app.get("/doc", swaggerUI({ url: "/openapi" }));
@@ -42,10 +37,8 @@ export const app = Effect.runSync(
   }).pipe(
     Effect.provide(MainApp.Default),
     Effect.provide(SearchApp.Default),
-    Effect.provide(DetailApp.Default),
     // TODO: rate limit 実装後に .main に切り替える
     Effect.provide(SearchReposQuery.test),
-    Effect.provide(GetRepoByFullNameQuery.test),
   ),
 );
 
