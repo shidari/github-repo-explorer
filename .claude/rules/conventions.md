@@ -10,7 +10,7 @@
 - **Formatting/Linting**: Biome を使用（staged ファイルのみ対象。プロジェクト全体への実行は禁止）
 - **Commits**: Conventional Commits format
   - Message in Japanese
-  - Include scope (e.g., `feat(search): リポジトリ検索機能を追加`)
+  - monorepo でない場合は scope 不要（例: `feat: リポジトリ検索機能を追加`）
   - Include body explaining the change
 - **Package Manager**: pnpm
 - **CLI実行**: `npx` ではなく `pnpm exec` を使うこと
