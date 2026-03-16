@@ -2,7 +2,7 @@ import { swaggerUI } from "@hono/swagger-ui";
 import { Effect } from "effect";
 import { Hono } from "hono";
 import { openAPIRouteHandler } from "hono-openapi";
-import { SearchReposQuery } from "@/query";
+import { SearchReposQuery } from "@/repository/query";
 import { SearchApp } from "./search";
 
 // SearchApp を合成した Hono アプリケーション

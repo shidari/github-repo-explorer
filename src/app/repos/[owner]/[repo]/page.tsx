@@ -12,7 +12,7 @@ import {
   ItemSeparator,
   ItemTitle,
 } from "@/components/ui/item";
-import { GetRepoByFullNameQuery } from "@/query";
+import { GetRepoByFullNameQuery } from "@/repository/query";
 import styles from "./page.module.css";
 
 export default async function RepoDetailPage({
