@@ -7,10 +7,11 @@ export default function RepoDetailLoading() {
       <Skeleton
         style={{ width: "8rem", height: "1rem", borderRadius: "0.25rem" }}
       />
-      <Skeleton style={{ height: "5rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "4rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "2rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "2rem", borderRadius: "0.5rem" }} />
+      <Skeleton style={{ height: "8rem", borderRadius: "0.5rem" }} />
+      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
+      <Skeleton style={{ height: "3rem", borderRadius: "0.5rem" }} />
+      <Skeleton style={{ height: "3rem", borderRadius: "0.5rem" }} />
+      <Skeleton style={{ height: "3rem", borderRadius: "0.5rem" }} />
     </main>
   );
 }
