@@ -1,5 +1,5 @@
+import { Effect } from "effect";
 import Link from "next/link";
-import { createClient } from "@/client";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,11 +12,8 @@ import {
   ItemSeparator,
   ItemTitle,
 } from "@/components/ui/item";
+import { GetRepoByFullNameQuery } from "@/query";
 import styles from "./page.module.css";
-
-const client = createClient(
-  process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-);
 
 export default async function RepoDetailPage({
   params,
@@ -25,11 +22,20 @@ export default async function RepoDetailPage({
 }) {
   const { owner, repo } = await params;
 
-  const res = await client.api.repos[":owner"][":repo"].$get({
-    param: { owner, repo },
-  });
+  const result = await Effect.runPromise(
+    Effect.gen(function* () {
+      const query = yield* GetRepoByFullNameQuery;
+      return yield* query.runAction({ owner, repo });
+    }).pipe(
+      Effect.provide(GetRepoByFullNameQuery.test),
+      Effect.match({
+        onSuccess: (data) => ({ ok: true as const, data }),
+        onFailure: (err) => ({ ok: false as const, error: err }),
+      }),
+    ),
+  );
 
-  if (!res.ok) {
+  if (!result.ok) {
     return (
       <main className={styles.container}>
         <p className={styles.notFound}>
@@ -42,7 +48,7 @@ export default async function RepoDetailPage({
     );
   }
 
-  const data = await res.json();
+  const { data } = result;
 
   return (
     <main className={styles.container}>
