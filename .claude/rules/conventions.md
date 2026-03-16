@@ -22,3 +22,4 @@
   1. main ブランチ上なら、コミット内容に基づいたブランチ名（例: `feat/xxx`, `refactor/xxx`）を自動作成し、コミットをそのブランチに移動する
   2. `git push -u origin <branch>` でリモートに push
   3. そのブランチの PR が未作成なら `gh pr create` で PR を作成する（既存なら push のみ）
+  4. PR が既存の場合は、コミット内容を反映して PR の body を更新する
