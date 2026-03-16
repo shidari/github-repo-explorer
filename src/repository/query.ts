@@ -99,7 +99,7 @@ export class SearchReposQuery extends Context.Tag("SearchReposQuery")<
   static readonly test = Layer.succeed(SearchReposQuery, {
     runAction: ({ query, page, perPage }) =>
       Effect.gen(function* () {
-        yield* Effect.sleep("2 seconds");
+        yield* Effect.sleep("250 millis");
         const filtered = mockTestRepos.filter(
           (r) =>
             r.full_name.toLowerCase().includes(query.toLowerCase()) ||
@@ -176,7 +176,7 @@ export class GetRepoByFullNameQuery extends Context.Tag(
   static readonly test = Layer.succeed(GetRepoByFullNameQuery, {
     runAction: ({ owner, repo }) =>
       Effect.gen(function* () {
-        yield* Effect.sleep("2 seconds");
+        yield* Effect.sleep("250 millis");
         const found = mockTestRepos.find(
           (r) =>
             r.owner.username.toLowerCase() === owner.toLowerCase() &&

@@ -18,4 +18,5 @@ pnpm type-check    # Type check
 pnpm lint          # Biome check
 pnpm format        # Biome format
 pnpm storybook     # Storybook dev (port 6006)
+pnpm codegen:db    # Kysely codegen (Docker required)
 ```

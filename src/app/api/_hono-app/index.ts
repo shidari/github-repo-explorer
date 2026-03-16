@@ -2,15 +2,24 @@ import { swaggerUI } from "@hono/swagger-ui";
 import { Effect } from "effect";
 import { Hono } from "hono";
 import { openAPIRouteHandler } from "hono-openapi";
+import { DB } from "@/infra/db";
 import { SearchReposQuery } from "@/repository/query";
+import {
+  RateLimitConfigTag,
+  RateLimitMiddleware,
+} from "./middleware/rate-limit";
 import { SearchApp } from "./search";
 
 // SearchApp を合成した Hono アプリケーション
 export class MainApp extends Effect.Service<MainApp>()("MainApp", {
   effect: Effect.gen(function* () {
     const searchApp = yield* SearchApp;
+    const { middleware: rateLimitMiddleware } = yield* RateLimitMiddleware;
 
-    const app = new Hono().basePath("/api").route("/search", searchApp);
+    const app = new Hono()
+      .basePath("/api")
+      .use("*", rateLimitMiddleware)
+      .route("/search", searchApp);
 
     app.get("/", (c) => c.redirect("/doc"));
     app.get("/doc", swaggerUI({ url: "/openapi" }));
@@ -30,13 +39,16 @@ export class MainApp extends Effect.Service<MainApp>()("MainApp", {
 }) {}
 
 // Layer を上から順に provide して依存を解決
-export const app = Effect.runSync(
+export const app = await Effect.runPromise(
   Effect.gen(function* () {
     const { app } = yield* MainApp;
     return app;
   }).pipe(
     Effect.provide(MainApp.Default),
     Effect.provide(SearchApp.Default),
+    Effect.provide(RateLimitMiddleware.Default),
+    Effect.provide(RateLimitConfigTag.main),
+    Effect.provide(DB.test),
     // TODO: rate limit 実装後に .main に切り替える
     Effect.provide(SearchReposQuery.test),
   ),
