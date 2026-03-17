@@ -106,7 +106,9 @@ pnpm build         # プロダクションビルド
     - `lastVisitedRepoAtom`: 詳細ページで full_name をセット。検索結果に戻ったときの scroll 復元に使用
 - **SWR**（サーバーステート）
   - Suspense が使える点と、クライアント側の server state キャッシュ管理を任せられる点から採用
-  - 今回の要件に絞るため `revalidateOnFocus` / `revalidateOnReconnect` は無効化（有効にするとページネーション周りの設計も変更が必要になりそうなため）
+  - Suspense のエラーは Error Boundary で補足すればよく、明示的なエラーハンドリングが不要
+  - Next.js と同じ Vercel 製でエコシステムを統一
+  - 今回の要件に絞るため `revalidateOnFocus` / `revalidateOnReconnect` は無効化（仕様の簡略化）
 
 ##### コンポーネント設計
 
