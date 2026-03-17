@@ -100,11 +100,14 @@ export class SearchReposQuery extends Context.Tag("SearchReposQuery")<
     runAction: ({ query, page, perPage }) =>
       Effect.gen(function* () {
         yield* Effect.sleep("250 millis");
+        // GitHub API のデフォルト検索は name + description + topics
+        // https://docs.github.com/en/search-github/searching-on-github/searching-for-repositories
+        // テスト用モックでは full_name + description の部分一致に簡略化
+        const q = query.toLowerCase();
         const filtered = mockTestRepos.filter(
-          (r) =>
-            r.full_name.toLowerCase().includes(query.toLowerCase()) ||
-            (r.description?.toLowerCase().includes(query.toLowerCase()) ??
-              false),
+          ({ full_name, description }) =>
+            full_name.toLowerCase().includes(q) ||
+            (description?.toLowerCase().includes(q) ?? false),
         );
         if (filtered.length === 0) {
           return yield* Effect.fail(new SearchNoResultError({ query }));
