@@ -17,6 +17,7 @@
     "codegen:db": "bash src/infra/scripts/codegen.sh"
   },
   "dependencies": {
+    "@electric-sql/pglite": "0.3.16",
     "@hono/effect-validator": "1.2.0",
     "@hono/standard-validator": "0.2.2",
     "@hono/swagger-ui": "0.6.1",
@@ -36,7 +37,6 @@
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
     "@chromatic-com/storybook": "5.0.1",
-    "@electric-sql/pglite": "0.3.16",
     "@faker-js/faker": "10.3.0",
     "@hono/node-server": "1.19.11",
     "@storybook/addon-a11y": "10.2.19",
