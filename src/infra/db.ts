@@ -1,4 +1,5 @@
 import { PGlite } from "@electric-sql/pglite";
+import { createKysely } from "@vercel/postgres-kysely";
 import { Context, Effect, Layer } from "effect";
 import {
   CompiledQuery,
@@ -78,27 +79,48 @@ class PGliteDialect implements Dialect {
 }
 
 // ── DB Layer ──
+// NOTE: DB 接続の lifecycle（destroy）は管理していない。
+// Next.js の API Routes からサーバーの起動・終了を制御する方法が
+// 現状見つかっておらず、acquireRelease のスコープを合わせられないため。
+// Vercel (serverless) ではプロセスが短命のため、現状は問題ないと判断。
+// コネクションプールの枯渇対策として Edge Middleware（middleware.ts）で
+// IP ベースの rate limit を実装しているが、Edge が複数ノードで動作するため
+// ノード間でカウントが共有されず、分散環境では不完全（要調査）。
+// 完全な対策には Vercel KV（Redis）等の共有ストアが必要。
+
+async function migrate(db: Kysely<Database>) {
+  await db.schema
+    .createTable("token_buckets")
+    .ifNotExists()
+    .addColumn("client_id", "text", (col) => col.primaryKey())
+    .addColumn("tokens", "real", (col) => col.notNull())
+    .addColumn("last_refill", "timestamptz", (col) =>
+      col.notNull().defaultTo(db.fn("now")),
+    )
+    .execute();
+}
 
 export class DB extends Context.Tag("DB")<
   DB,
   { readonly db: Kysely<Database> }
 >() {
+  static readonly main = Layer.effect(
+    DB,
+    Effect.promise(async () => {
+      const db = createKysely<Database>();
+      await migrate(db);
+      return { db };
+    }),
+  );
+
   static readonly test = Layer.effect(
     DB,
     Effect.promise(async () => {
       const pglite = new PGlite();
-      const db = new Kysely<Database>({ dialect: new PGliteDialect(pglite) });
-
-      await db.schema
-        .createTable("token_buckets")
-        .ifNotExists()
-        .addColumn("client_id", "text", (col) => col.primaryKey())
-        .addColumn("tokens", "real", (col) => col.notNull())
-        .addColumn("last_refill", "timestamptz", (col) =>
-          col.notNull().defaultTo(db.fn("now")),
-        )
-        .execute();
-
+      const db = new Kysely<Database>({
+        dialect: new PGliteDialect(pglite),
+      });
+      await migrate(db);
       return { db };
     }),
   );
