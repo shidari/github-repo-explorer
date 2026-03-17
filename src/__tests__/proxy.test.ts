@@ -1,7 +1,7 @@
 import { Effect, Layer } from "effect";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EdgeRateLimitConfigTag, EdgeRateLimitMiddleware } from "@/middleware";
+import { EdgeRateLimitConfigTag, middlewareProgram } from "@/proxy";
 
 function createTestMiddleware({
   windowMs,
@@ -10,17 +10,13 @@ function createTestMiddleware({
   windowMs: number;
   maxRequests: number;
 }) {
-  const { middleware } = Effect.runSync(
-    Effect.gen(function* () {
-      return yield* EdgeRateLimitMiddleware;
-    }).pipe(
-      Effect.provide(EdgeRateLimitMiddleware.Default),
+  return Effect.runSync(
+    middlewareProgram.pipe(
       Effect.provide(
         Layer.succeed(EdgeRateLimitConfigTag, { windowMs, maxRequests }),
       ),
     ),
   );
-  return middleware;
 }
 
 function createRequest({ ip, path }: { ip: string; path: string }) {

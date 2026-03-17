@@ -1,6 +1,6 @@
 import { Effect, Layer } from "effect";
 import { describe, expect, it, vi } from "vitest";
-import { MainApp } from "@/app/api/_hono-app";
+import { mainAppProgram } from "@/app/api/_hono-app";
 import {
   RateLimitConfigTag,
   RateLimitMiddleware,
@@ -12,11 +12,7 @@ import { SearchReposQuery } from "@/repository/query";
 describe("rate limiter", () => {
   it("レートリミット内のリクエストは 200 を返す", async () => {
     const app = await Effect.runPromise(
-      Effect.gen(function* () {
-        const { app } = yield* MainApp;
-        return app;
-      }).pipe(
-        Effect.provide(MainApp.Default),
+      mainAppProgram.pipe(
         Effect.provide(SearchApp.Default),
         Effect.provide(RateLimitMiddleware.Default),
         Effect.provide(
@@ -33,11 +29,7 @@ describe("rate limiter", () => {
 
   it("レートリミットを超えたら 429 を返す", async () => {
     const app = await Effect.runPromise(
-      Effect.gen(function* () {
-        const { app } = yield* MainApp;
-        return app;
-      }).pipe(
-        Effect.provide(MainApp.Default),
+      mainAppProgram.pipe(
         Effect.provide(SearchApp.Default),
         Effect.provide(RateLimitMiddleware.Default),
         Effect.provide(
@@ -67,11 +59,7 @@ describe("rate limiter", () => {
 
   it("一定時間経過後にトークンが回復し 200 を返す", async () => {
     const app = await Effect.runPromise(
-      Effect.gen(function* () {
-        const { app } = yield* MainApp;
-        return app;
-      }).pipe(
-        Effect.provide(MainApp.Default),
+      mainAppProgram.pipe(
         Effect.provide(SearchApp.Default),
         Effect.provide(RateLimitMiddleware.Default),
         Effect.provide(
