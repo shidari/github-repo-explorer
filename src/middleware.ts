@@ -67,7 +67,7 @@ export class EdgeRateLimitMiddleware extends Effect.Service<EdgeRateLimitMiddlew
 
 // ── Middleware ──
 
-export const { middleware } = Effect.runSync(
+const edgeRateLimit = Effect.runSync(
   Effect.gen(function* () {
     return yield* EdgeRateLimitMiddleware;
   }).pipe(
@@ -75,6 +75,12 @@ export const { middleware } = Effect.runSync(
     Effect.provide(EdgeRateLimitConfigTag.main),
   ),
 );
+
+// Next.js は export function middleware を要求するため、
+// destructuring export（export const { middleware }）は使えない
+export function middleware(request: NextRequest) {
+  return edgeRateLimit.middleware(request);
+}
 
 // NOTE: DB コネクションプールの枯渇を防ぐための IP ベース rate limit。
 // Edge が複数ノードで動作する場合、ノード間でカウントが共有されず不完全（未検証）。
