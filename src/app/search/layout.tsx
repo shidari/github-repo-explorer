@@ -5,5 +5,9 @@ export default function SearchLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <main className={styles.container}>{children}</main>;
+  return (
+    <main id="main-content" className={styles.container}>
+      {children}
+    </main>
+  );
 }

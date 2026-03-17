@@ -1,12 +1,18 @@
 import { FastCheck } from "effect";
 import { describe, expect, it } from "vitest";
-import { formatCount } from "../components/features/search/RepoOverview";
+import { formatCount } from "../app/search/page";
 
 describe("formatCount", () => {
-  it("1000 以上なら k 表記になる", () => {
+  it("1,000,000 以上なら 1M+ 表記になる", () => {
+    expect(formatCount(1_000_000)).toBe("1M+");
+    expect(formatCount(5_000_000)).toBe("1M+");
+    expect(formatCount(999_999_999)).toBe("1M+");
+  });
+
+  it("1000 以上 1,000,000 未満なら k 表記になる", () => {
     FastCheck.assert(
       FastCheck.property(
-        FastCheck.integer({ min: 1000, max: Number.MAX_SAFE_INTEGER }),
+        FastCheck.integer({ min: 1000, max: 999_999 }),
         (n) => {
           const result = formatCount(n);
           expect(result).toMatch(/^\d+\.\dk$/);
