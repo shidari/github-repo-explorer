@@ -78,6 +78,14 @@ pnpm build         # プロダクションビルド
   - Next.js 組み込みの scroll restoration が現状の設計では効かなかったため自前で実装
   - 直アクセス時は `searchQueryAtom` が空なので復元をスキップ
 
+##### 詳細表示
+
+- RSC でデータ取得: `page.tsx`（Server Component）でリポジトリクエリを直接実行しデータを取得
+  - Client Component は scroll 復元の副作用のみ担当
+- Vercel のベストプラクティススキルによるレビューを経て追加:
+  - 動的メタデータ（`generateMetadata`）
+  - エラーページ（`error.tsx`, `global-error.tsx`, `not-found.tsx`）
+
 #### 設計
 
 ##### 状態管理
@@ -99,14 +107,6 @@ pnpm build         # プロダクションビルド
 - **SWR**（サーバーステート）
   - Suspense が使える点と、クライアント側の server state キャッシュ管理を任せられる点から採用
   - 今回の要件に絞るため `revalidateOnFocus` / `revalidateOnReconnect` は無効化（有効にするとページネーション周りの設計も変更が必要になりそうなため）
-
-##### 詳細表示
-
-- RSC でデータ取得: `page.tsx`（Server Component）でリポジトリクエリを直接実行しデータを取得
-  - Client Component は scroll 復元の副作用のみ担当
-- Vercel のベストプラクティススキルによるレビューを経て追加:
-  - 動的メタデータ（`generateMetadata`）
-  - エラーページ（`error.tsx`, `global-error.tsx`, `not-found.tsx`）
 
 ##### コンポーネント設計
 
