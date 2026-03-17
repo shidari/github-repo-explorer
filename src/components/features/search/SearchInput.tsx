@@ -12,10 +12,12 @@ export function SearchInput({
   return (
     <Input
       type="search"
-      placeholder="Search repositories..."
+      name="q"
+      autoComplete="off"
+      placeholder="リポジトリを検索…"
       defaultValue={defaultValue}
       onChange={(e) => onInputChange(e.target.value)}
-      aria-label="Search repositories"
+      aria-label="リポジトリを検索"
     />
   );
 }

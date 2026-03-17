@@ -1,5 +1,5 @@
 .skeleton {
-  background-color: #f0f0f0;
+  background-color: var(--skeleton);
   border-radius: 0.375rem;
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
@@ -11,5 +11,11 @@
   }
   50% {
     opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
   }
 }

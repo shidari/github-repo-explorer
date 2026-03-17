@@ -2,9 +2,16 @@
   --background: #ffffff;
   --foreground: #171717;
   --border: #e5e7eb;
+  --border-strong: #d0d7de;
   --muted: #f3f4f6;
-  --muted-foreground: #6b7280;
-  --accent: #2563eb;
+  --muted-foreground: #656d76;
+  --accent: #0969da;
+  --accent-fg: #ffffff;
+  --focus-ring: rgba(9, 105, 218, 0.3);
+  --hover-bg: #f6f8fa;
+  --disabled-fg: #8c959f;
+  --skeleton: #f0f0f0;
+  --badge-bg: #ddf4ff;
 }
 
 *,

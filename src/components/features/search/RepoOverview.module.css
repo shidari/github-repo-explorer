@@ -13,12 +13,12 @@
 .name {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #0969da;
+  color: var(--accent);
 }
 
 .description {
   font-size: 0.875rem;
-  color: #656d76;
+  color: var(--muted-foreground);
   margin-bottom: 0.75rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -31,7 +31,7 @@
   align-items: center;
   gap: 1rem;
   font-size: 0.75rem;
-  color: #656d76;
+  color: var(--muted-foreground);
 }
 
 .stat {

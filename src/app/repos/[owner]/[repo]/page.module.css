@@ -9,12 +9,12 @@
 
 .backLink {
   font-size: 0.875rem;
-  color: var(--muted-foreground, #6b7280);
+  color: var(--muted-foreground);
   text-decoration: none;
 }
 
 .backLink:hover {
-  color: var(--foreground, #111);
+  color: var(--foreground);
 }
 
 .stats {
@@ -38,7 +38,7 @@
 
 .statLabel {
   font-size: 0.75rem;
-  color: var(--muted-foreground, #6b7280);
+  color: var(--muted-foreground);
 }
 
 .meta {
@@ -50,7 +50,7 @@
 
 .branch {
   font-size: 0.8125rem;
-  color: var(--muted-foreground, #6b7280);
+  color: var(--muted-foreground);
 }
 
 .topics {
@@ -66,7 +66,7 @@
 
 .externalLink {
   font-size: 0.875rem;
-  color: var(--accent, #2563eb);
+  color: var(--accent);
   text-decoration: none;
 }
 
@@ -76,7 +76,7 @@
 
 .date {
   font-size: 0.8125rem;
-  color: var(--muted-foreground, #6b7280);
+  color: var(--muted-foreground);
 }
 
 .notFound {

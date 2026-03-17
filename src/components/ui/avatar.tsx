@@ -1,9 +1,11 @@
 "use client";
 
-import { type HTMLAttributes, useState } from "react";
+import { type ComponentProps, useState } from "react";
 import styles from "./avatar.module.css";
 
-type AvatarProps = HTMLAttributes<HTMLSpanElement> & {
+const SIZE_PX = { sm: 24, default: 40, lg: 56 } as const;
+
+export type AvatarProps = ComponentProps<"span"> & {
   src: string;
   alt: string;
   fallback: string;
@@ -19,21 +21,28 @@ export function Avatar({
   ...props
 }: AvatarProps) {
   const [hasError, setHasError] = useState(false);
+  const px = SIZE_PX[size];
 
   return (
     <span
+      data-slot="avatar"
       className={`${styles.avatar}${className ? ` ${className}` : ""}`}
       data-size={size}
       {...props}
     >
       {hasError ? (
-        <span className={styles.fallback}>{fallback}</span>
+        <span className={styles.fallback} role="img" aria-label={alt}>
+          {fallback}
+        </span>
       ) : (
         // biome-ignore lint/performance/noImgElement: generic UI component
         <img
           className={styles.image}
           src={src}
           alt={alt}
+          width={px}
+          height={px}
+          loading="lazy"
           onError={() => setHasError(true)}
         />
       )}

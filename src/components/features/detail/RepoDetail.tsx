@@ -13,11 +13,14 @@ import { Label } from "@/components/ui/label";
 import type { Repository } from "@/domain";
 import styles from "./RepoDetail.module.css";
 
+const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 function formatDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}/${m}/${d}`;
+  return dateFormatter.format(date);
 }
 
 export function RepoDetail({ repo }: { repo: Repository }) {
@@ -72,11 +75,11 @@ export function RepoDetail({ repo }: { repo: Repository }) {
       <ItemSeparator />
 
       <div className={styles.details}>
-        {repo.language && <Label label="Language">{repo.language}</Label>}
-        {repo.license && <Label label="License">{repo.license.name}</Label>}
-        <Label label="Branch">{repo.default_branch}</Label>
+        {repo.language && <Label term="Language">{repo.language}</Label>}
+        {repo.license && <Label term="License">{repo.license.name}</Label>}
+        <Label term="Branch">{repo.default_branch}</Label>
         {repo.archived && (
-          <Label label="Status">
+          <Label term="Status">
             <Badge>Archived</Badge>
           </Label>
         )}
@@ -86,7 +89,7 @@ export function RepoDetail({ repo }: { repo: Repository }) {
         <>
           <ItemSeparator />
           <div className={styles.details}>
-            <Label label="Topics">
+            <Label term="Topics">
               <span className={styles.badges}>
                 {repo.topics.map((topic) => (
                   <Badge key={topic}>{topic}</Badge>
@@ -100,7 +103,7 @@ export function RepoDetail({ repo }: { repo: Repository }) {
       <ItemSeparator />
 
       <div className={styles.details}>
-        <Label label="Links">
+        <Label term="Links">
           <span className={styles.links}>
             <a
               href={repo.html_url}
@@ -127,8 +130,8 @@ export function RepoDetail({ repo }: { repo: Repository }) {
       <ItemSeparator />
 
       <div className={styles.details}>
-        <Label label="Created">{formatDate(repo.created_at)}</Label>
-        <Label label="Updated">{formatDate(repo.updated_at)}</Label>
+        <Label term="Created">{formatDate(repo.created_at)}</Label>
+        <Label term="Updated">{formatDate(repo.updated_at)}</Label>
       </div>
     </ItemGroup>
   );

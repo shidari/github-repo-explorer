@@ -74,6 +74,6 @@ export const proxy = Effect.runSync(runnable);
 //   - 単一 IP からのバースト: 30req 超で 429。1 分後にリセット
 //   - 複数ノードへの分散攻撃: 最悪 30 × ノード数が通過。Hono の token bucket が最終防御
 // 完全な対策には Vercel KV（Redis）等の共有ストアが必要。
-export const config = {
+export const proxyConfig = {
   matcher: "/api/:path*",
 };
