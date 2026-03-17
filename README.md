@@ -56,7 +56,7 @@ pnpm build         # プロダクションビルド
 
 ### 検索機能
 
-- **Debounce + Suspense 統合**: 目的は API リクエストの抑制のため、`useDeferredValue`（React スケジューラ任せで時間制御不可）ではなく固定 300ms の debounce を採用。さらに Suspense と統合し、Promise を throw して suspend させることで、チラつきの防止と concurrent rendering による UI 表示の最適化を実現した
+- **Debounce + Suspense 統合**: 目的は API リクエストの抑制のため、`useDeferredValue`（React スケジューラ任せで時間制御不可）ではなく固定 300ms の debounce を採用。さらに Suspense と統合し、Promise を throw して suspend させることで、チラつきの防止と concurrent rendering による UI 表示の最適化を実現した。ただし、モジュールレベルのシングルトンで状態を管理しているため複数インスタンスの同時使用は不可（`clearTimeout` が競合する）。この制約をコンポーネント名 `UnsafeSingletonDebounce` で明示した。Map によるインスタンス管理も検討したが、タイマーのクリーンアップの複雑さから見送った
 - **ページネーション**: 上下2箇所に配置。ページ番号のスマート表示（前後1ページ + 先頭・末尾 + 省略記号）。GitHub Search API の1000件制限に対応し、最大50ページにキャップ。ページネーションと検索結果一覧の Suspense 境界を分離し、ページ移動時にページネーション自体が suspend しないようにして UX を改善。なお、SWR の preload による隣接ページの先読みを試みたが、Suspense との噛み合いが悪く断念した
 - **スクロール復元**: 現状の設計では Next.js 組み込みの scroll restoration が効かなかったため、自前で実装。Jotai の atom に訪問リポジトリを記録し、`data-repo` 属性で DOM 要素を特定して `scrollIntoView` する仕組み。直アクセス時は `searchQueryAtom` が空なので復元をスキップ
 
