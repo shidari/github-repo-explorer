@@ -84,5 +84,6 @@
 .separator {
   height: 1px;
   background: var(--border);
+  opacity: 0.5;
   margin: 0.25rem 0;
 }
