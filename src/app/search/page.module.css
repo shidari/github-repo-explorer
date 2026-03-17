@@ -24,10 +24,13 @@
   text-decoration: none;
   color: inherit;
   display: block;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: background-color 0.15s ease;
 }
 
 .repoLink:hover {
-  opacity: 0.85;
+  background-color: var(--hover-bg);
 }
 
 .empty {
