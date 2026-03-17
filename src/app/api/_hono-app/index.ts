@@ -1,5 +1,5 @@
 import { swaggerUI } from "@hono/swagger-ui";
-import { Effect } from "effect";
+import { Config, Effect } from "effect";
 import { Hono } from "hono";
 import { openAPIRouteHandler } from "hono-openapi";
 import { DB } from "@/infra/db";
@@ -21,16 +21,23 @@ export class MainApp extends Effect.Service<MainApp>()("MainApp", {
       .use("*", rateLimitMiddleware)
       .route("/search", searchApp);
 
-    app.get("/", (c) => c.redirect("/doc"));
-    app.get("/doc", swaggerUI({ url: "/openapi" }));
-    app.get(
-      "/openapi",
-      openAPIRouteHandler(app, {
-        documentation: {
-          info: { title: "GitHub Repo Explorer API", version: "0.1.0" },
-        },
-      }),
+    const isDev = yield* Config.string("NODE_ENV").pipe(
+      Config.map((env) => env === "development"),
+      Config.withDefault(false),
     );
+
+    if (isDev) {
+      app.get("/", (c) => c.redirect("/doc"));
+      app.get("/doc", swaggerUI({ url: "/openapi" }));
+      app.get(
+        "/openapi",
+        openAPIRouteHandler(app, {
+          documentation: {
+            info: { title: "GitHub Repo Explorer API", version: "0.1.0" },
+          },
+        }),
+      );
+    }
 
     // 直接 Hono インスタンスを返すと Effect.Service の型として推論され
     // RPC クライアントの型が解決できなくなるため、オブジェクトで包む
