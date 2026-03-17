@@ -26,5 +26,9 @@ export function useSWRSuspenseSearchFirstPageResult(query: string) {
 
 // 指定ページの検索結果を取得
 export function useSWRSuspenseSearchPageResult(query: string, page: number) {
-  return useSWR(["search", query, page], fetcher, { suspense: true });
+  return useSWR(["search", query, page], fetcher, {
+    suspense: true,
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+  });
 }
