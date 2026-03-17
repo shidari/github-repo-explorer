@@ -110,7 +110,7 @@ pnpm build         # プロダクションビルド
 ##### コンポーネント設計
 
 - **shadcn/ui** のデザインとコンポーネント設計をベースにして、必要なコンポーネントを追加
-  - Radix UI や Tailwind CSS は必要のない依存と判断し、CSS Modules で直接実装
+  - Radix UI や Tailwind CSS は今回の要件では必要のない依存と判断し、CSS Modules で直接実装
 - 汎用 UI（`components/ui/`）と機能固有コンポーネント（`components/features/`）を分離
 - **Storybook**: UI コンポーネントの検証を効率的に行うために、Next.js 開発サーバ経由でなく Storybook を利用
   - UI / feature コンポーネントのカタログを先に作り、デザインと動きを検証してからページに組み込むプロセスで開発
@@ -199,7 +199,7 @@ Client → [1段目: Edge proxy] → [2段目: Hono ミドルウェア] → GitH
 | **方式** | IP ベース（30req/min） | Token bucket |
 | **実行環境** | Next.js 16 `proxy.ts`（API ルートのみ） | Node.js Runtime |
 | **ストレージ** | インメモリ | Vercel Postgres |
-| **ストレージ選定理由** | 外部 DB は複雑さが増し割に合わない | 無料で Vercel コンソールから管理可能 |
+| **ストレージ選定理由** | 要件的に厳密さより手軽さを優先しインメモリを採用 | 無料で Vercel コンソールから管理可能 |
 
 - 1段目をインメモリにした背景: API Routes ではサーバーの立ち上げコードを触れず、DB コネクションのライフサイクル管理ができないため、コネクションプールが溢れる恐れがある
 - 通常の利用では debounce + SWR キャッシュにより 10req/min 程度に収まると想定。バーストリクエストは1段目で遮断
