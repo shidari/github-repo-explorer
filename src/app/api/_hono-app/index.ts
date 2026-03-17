@@ -48,9 +48,12 @@ export const app = await Effect.runPromise(
     Effect.provide(SearchApp.Default),
     Effect.provide(RateLimitMiddleware.Default),
     Effect.provide(RateLimitConfigTag.main),
-    Effect.provide(DB.test),
-    // TODO: rate limit 実装後に .main に切り替える
-    Effect.provide(SearchReposQuery.test),
+    Effect.provide(process.env.NODE_ENV === "production" ? DB.main : DB.test),
+    Effect.provide(
+      process.env.NODE_ENV === "production"
+        ? SearchReposQuery.main
+        : SearchReposQuery.test,
+    ),
   ),
 );
 

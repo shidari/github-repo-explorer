@@ -1,4 +1,5 @@
 import { PGlite } from "@electric-sql/pglite";
+import { createKysely } from "@vercel/postgres-kysely";
 import { Context, Effect, Layer } from "effect";
 import {
   CompiledQuery,
@@ -83,6 +84,25 @@ export class DB extends Context.Tag("DB")<
   DB,
   { readonly db: Kysely<Database> }
 >() {
+  static readonly main = Layer.effect(
+    DB,
+    Effect.promise(async () => {
+      const db = createKysely<Database>();
+
+      await db.schema
+        .createTable("token_buckets")
+        .ifNotExists()
+        .addColumn("client_id", "text", (col) => col.primaryKey())
+        .addColumn("tokens", "real", (col) => col.notNull())
+        .addColumn("last_refill", "timestamptz", (col) =>
+          col.notNull().defaultTo(db.fn("now")),
+        )
+        .execute();
+
+      return { db };
+    }),
+  );
+
   static readonly test = Layer.effect(
     DB,
     Effect.promise(async () => {
