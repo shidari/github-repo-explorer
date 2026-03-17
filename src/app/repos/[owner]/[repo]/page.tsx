@@ -1,14 +1,18 @@
 import { Effect } from "effect";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { GetRepoByFullNameQuery } from "@/repository/query";
 import { RepoDetailClientPage } from "./_client";
 import styles from "./page.module.css";
 
-export default async function RepoDetailPage({
-  params,
-}: {
-  params: Promise<{ owner: string; repo: string }>;
-}) {
+type Props = { params: Promise<{ owner: string; repo: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { owner, repo } = await params;
+  return { title: `${owner}/${repo}` };
+}
+
+export default async function RepoDetailPage({ params }: Props) {
   const { owner, repo } = await params;
 
   const result = await Effect.runPromise(

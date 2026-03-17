@@ -7,11 +7,11 @@
 }
 
 .item[data-variant="outline"] {
-  border: 1px solid var(--border, #e5e7eb);
+  border: 1px solid var(--border);
 }
 
 .item[data-variant="muted"] {
-  background: var(--muted, #f3f4f6);
+  background: var(--muted);
 }
 
 .item[data-size="sm"] {
@@ -43,12 +43,15 @@
   font-weight: 600;
   font-size: 0.875rem;
   line-height: 1.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .description {
   font-size: 0.8125rem;
   line-height: 1.25rem;
-  color: var(--muted-foreground, #6b7280);
+  color: var(--muted-foreground);
   margin: 0;
 }
 
@@ -80,6 +83,6 @@
 
 .separator {
   height: 1px;
-  background: var(--border, #e5e7eb);
+  background: var(--border);
   margin: 0.25rem 0;
 }

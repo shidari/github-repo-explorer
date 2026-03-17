@@ -7,6 +7,17 @@
   font-weight: 500;
   line-height: 1.5;
   border-radius: 999px;
-  background-color: #ddf4ff;
-  color: #0969da;
+  background-color: var(--badge-bg);
+  color: var(--accent);
+}
+
+.badge[data-variant="secondary"] {
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.badge[data-variant="outline"] {
+  background-color: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--muted-foreground);
 }

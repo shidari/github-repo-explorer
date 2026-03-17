@@ -37,7 +37,7 @@ export default function SearchPage() {
   const [query, setQuery] = useAtom(searchQueryAtom);
   const page = useAtomValue(searchPageAtom);
   return (
-    <>
+    <main id="main-content">
       <SearchInput defaultValue={query} onInputChange={setQuery} />
 
       {query ? (
@@ -49,7 +49,7 @@ export default function SearchPage() {
       ) : (
         <EmptyState />
       )}
-    </>
+    </main>
   );
 }
 
@@ -75,7 +75,9 @@ function SearchResult({ query, page }: { query: string; page: number }) {
   return (
     <>
       <div className={styles.resultHeader}>
-        <p className={styles.count}>{total_count.toLocaleString()} results</p>
+        <p className={styles.count} aria-live="polite">
+          {total_count.toLocaleString()} results
+        </p>
         <Pagination
           currentPage={page}
           totalPages={total_pages}
@@ -188,15 +190,7 @@ function RepositoryListSkeleton() {
 }
 
 function PaginationSkeleton() {
-  return (
-    <div className={styles.paginationSkeleton}>
-      <Skeleton className={styles.paginationSkeletonItem} />
-      <Skeleton className={styles.paginationSkeletonItem} />
-      <Skeleton className={styles.paginationSkeletonItem} />
-      <Skeleton className={styles.paginationSkeletonItem} />
-      <Skeleton className={styles.paginationSkeletonItem} />
-    </div>
-  );
+  return <Skeleton className={styles.paginationSkeleton} />;
 }
 
 function ResultCountSkeleton() {
@@ -217,8 +211,8 @@ function SearchSkeleton() {
 function EmptyState() {
   return (
     <div className={styles.empty}>
-      <p className={styles.emptyTitle}>Search GitHub Repositories</p>
-      <p>Enter a search query to find repositories.</p>
+      <p className={styles.emptyTitle}>GitHub リポジトリを検索</p>
+      <p>キーワードを入力してリポジトリを検索できます。</p>
     </div>
   );
 }

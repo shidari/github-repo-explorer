@@ -1,8 +1,9 @@
 "use client";
 
+import type { ComponentProps } from "react";
 import styles from "./pagination.module.css";
 
-type PaginationProps = {
+export type PaginationProps = ComponentProps<"nav"> & {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -48,13 +49,20 @@ export function Pagination({
   currentPage,
   totalPages,
   onPageChange,
+  className,
+  ...props
 }: PaginationProps) {
   if (totalPages <= 1) return null;
 
   const pages = pageNumbers(currentPage, totalPages);
 
   return (
-    <nav className={styles.pagination} aria-label="Pagination">
+    <nav
+      data-slot="pagination"
+      className={`${styles.pagination}${className ? ` ${className}` : ""}`}
+      aria-label="Pagination"
+      {...props}
+    >
       <button
         type="button"
         className={`${styles.page} ${currentPage <= 1 ? styles.disabled : ""}`}
@@ -69,7 +77,7 @@ export function Pagination({
             key={i < pages.length / 2 ? "ellipsis-left" : "ellipsis-right"}
             className={styles.ellipsis}
           >
-            ...
+            …
           </span>
         ) : (
           <button

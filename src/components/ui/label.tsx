@@ -1,8 +1,8 @@
-import type { HTMLAttributes } from "react";
+import type { ComponentProps } from "react";
 import styles from "./label.module.css";
 
-type LabelProps = HTMLAttributes<HTMLElement> & {
-  label: string;
+export type LabelProps = ComponentProps<"dl"> & {
+  term: string;
 };
 
 /**
@@ -10,17 +10,15 @@ type LabelProps = HTMLAttributes<HTMLElement> & {
  * セマンティクスは dl（description list）を使用。
  * - dt（description term）: ラベル部分
  * - dd（description details）: 値部分
- *
- * TODO: 用途に応じてセマンティクスを精緻化する
- * （例: フォーム連携時は <label> + htmlFor、テーブル的な用途は別コンポーネント等）
  */
-export function Label({ label, children, className, ...props }: LabelProps) {
+export function Label({ term, children, className, ...props }: LabelProps) {
   return (
     <dl
+      data-slot="label"
       className={`${styles.root}${className ? ` ${className}` : ""}`}
       {...props}
     >
-      <dt className={styles.term}>{label}:</dt>
+      <dt className={styles.term}>{term}:</dt>
       <dd className={styles.definition}>{children}</dd>
     </dl>
   );
