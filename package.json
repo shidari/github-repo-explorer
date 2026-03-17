@@ -17,7 +17,6 @@
     "codegen:db": "bash src/infra/scripts/codegen.sh"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.3.16",
     "@hono/effect-validator": "^1.2.0",
     "@hono/node-server": "^1.19.11",
     "@hono/standard-validator": "^0.2.2",
@@ -31,7 +30,6 @@
     "jotai": "^2.18.1",
     "kysely": "^0.28.12",
     "kysely-codegen": "^0.20.0",
-    "kysely-pglite": "^0.6.1",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -40,6 +38,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
     "@chromatic-com/storybook": "^5.0.1",
+    "@electric-sql/pglite": "^0.3.16",
     "@faker-js/faker": "^10.3.0",
     "@storybook/addon-a11y": "^10.2.19",
     "@storybook/addon-docs": "^10.2.19",
