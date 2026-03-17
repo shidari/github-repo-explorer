@@ -162,7 +162,7 @@ src/
   - 各レイヤーがドメイン情報をどう使うかを DTO で明示
 - **Repository 層**
   - GitHub API への接続とドメインモデルへの変換
-  - Command パターン（AWS SDK v3 に着想）で操作単位にインターフェースを分割し、最小に保つ
+  - Repository パターンのインターフェース肥大化を避けるため、Command パターン（AWS SDK v3 に着想）で操作単位にインターフェースを分割
   - `Tag` + `Layer` で抽象化し、本番（GitHub API）とテスト（モックデータ）をレイヤー切り替えで差し替え可能
 - **API Routes 層**
   - フロントエンド（Client Component）から叩かれるものだけを Hono の API として実装
