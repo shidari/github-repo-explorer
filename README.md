@@ -113,7 +113,7 @@ pnpm build         # プロダクションビルド
 - **shadcn/ui** のデザインとコンポーネント設計をベースにして、必要なコンポーネントを追加
   - Radix UI や Tailwind CSS は今回の要件では必要のない依存と判断し、CSS Modules で直接実装
 - 汎用 UI（`components/ui/`）と機能固有コンポーネント（`components/features/`）を分離
-- **Storybook**: UI コンポーネントの検証を効率的に行うために、Next.js 開発サーバ経由でなく Storybook を利用
+- **Storybook**: コンポーネントの挙動検証を page.tsx 経由で行うのは非効率と判断し、Storybook で個別に検証
   - UI / feature コンポーネントのカタログを先に作り、デザインと動きを検証してからページに組み込むプロセスで開発
   - Play function によるインタラクションテスト含む
 
@@ -167,7 +167,7 @@ src/
   - フロントエンド（Client Component）から叩かれるものだけを Hono の API として実装
   - RSC で使うデータ取得は API を経由せず `repository/query` を直接呼び出す
   - OpenAPI スキーマの自動生成と Swagger UI を提供（開発環境のみ）
-  - API 開発時は Swagger UI で手動検証を行った
+  - API の検証をフロントエンド経由で行うのは非効率と判断し、Swagger UI で手動検証を行いつつ開発
 
 ##### レイヤーベース DI
 
