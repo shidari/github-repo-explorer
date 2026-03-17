@@ -8,7 +8,22 @@ type PaginationProps = {
   onPageChange: (page: number) => void;
 };
 
-function pageNumbers(current: number, total: number): (number | "...")[] {
+/**
+ * ページネーションに表示するページ番号の配列を生成する。
+ *
+ * - 7ページ以下: 全ページを表示
+ * - 8ページ以上: [1, ..., current-1, current, current+1, ..., last] の形式
+ *
+ * @example
+ * pageNumbers(1, 5)   // [1, 2, 3, 4, 5]
+ * pageNumbers(5, 50)  // [1, "...", 4, 5, 6, "...", 50]
+ * pageNumbers(1, 50)  // [1, 2, 3, "...", 50]
+ * pageNumbers(50, 50) // [1, "...", 49, 50]
+ */
+export function pageNumbers(
+  current: number,
+  total: number,
+): (number | "...")[] {
   if (total <= 7) {
     return Array.from({ length: total }, (_, i) => i + 1);
   }

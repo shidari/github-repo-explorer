@@ -5,6 +5,10 @@
 - **プロジェクト外のファイル参照禁止**: 原則として、このリポジトリ外のファイルを参照・編集しないこと
 - **ad-hoc スクリプト禁止**: コマンド出力の加工に `python3 -c`, `node -e` 等のワンライナーを使わないこと。`jq` 等の専用ツールを使う
 
+## React Rules
+
+- **手動メモ化禁止**: React Compiler（`babel-plugin-react-compiler`）が有効なため、`useMemo` / `useCallback` / `React.memo` を手動で使わないこと
+
 ## Coding Conventions
 
 - **Formatting/Linting**: Biome を使用（staged ファイルのみ対象。プロジェクト全体への実行は禁止）

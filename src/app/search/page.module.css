@@ -41,3 +41,38 @@
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
+
+.stat {
+  font-size: 0.875rem;
+  color: var(--muted-foreground, #6b7280);
+}
+
+/* ── Skeletons ── */
+
+.searchSkeleton {
+  margin-top: 1.5rem;
+}
+
+.paginationSkeleton {
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
+  margin-top: 1.5rem;
+}
+
+.paginationSkeletonItem {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.375rem;
+}
+
+.resultCountSkeleton {
+  width: 6rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+}
+
+.repositoryListSkeletonItem {
+  height: 6rem;
+  border-radius: 0.5rem;
+}

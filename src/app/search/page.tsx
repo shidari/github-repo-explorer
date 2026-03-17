@@ -103,11 +103,17 @@ function SearchResult({ query, page }: { query: string; page: number }) {
 
 function RepositoryList({ query, page }: { query: string; page: number }) {
   const { data: result } = useSWRSuspenseSearchPageResult(query, page);
-  const [lastVisited, setLastVisited] = useAtom(lastVisitedRepoAtom);
+  const lastVisited = useAtomValue(lastVisitedRepoAtom);
 
   // マウント時に最後に訪問したリポジトリにスクロール
   useEffect(() => {
     if (lastVisited) {
+      // HACK: 詳細ページの「Back to search」リンクと検索欄の位置が重なるため、
+      // 戻った際に検索欄にフォーカスが移り scrollIntoView が無効化される。
+      // 暫定的に blur で回避する。一瞬ちらつきが発生する副作用あり。
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
       const el = document.querySelector(`[data-repo="${lastVisited}"]`);
       el?.scrollIntoView({ block: "center" });
     }
@@ -134,7 +140,6 @@ function RepositoryList({ query, page }: { query: string; page: number }) {
             href={`/repos/${repo.full_name}`}
             className={styles.repoLink}
             data-repo={repo.full_name}
-            onClick={() => setLastVisited(repo.full_name)}
           >
             <Item>
               <ItemMedia>
@@ -168,34 +173,43 @@ function RepositoryList({ query, page }: { query: string; page: number }) {
 function RepositoryListSkeleton() {
   return (
     <div className={styles.results}>
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
     </div>
   );
 }
 
+function PaginationSkeleton() {
+  return (
+    <div className={styles.paginationSkeleton}>
+      <Skeleton className={styles.paginationSkeletonItem} />
+      <Skeleton className={styles.paginationSkeletonItem} />
+      <Skeleton className={styles.paginationSkeletonItem} />
+      <Skeleton className={styles.paginationSkeletonItem} />
+      <Skeleton className={styles.paginationSkeletonItem} />
+    </div>
+  );
+}
+
+function ResultCountSkeleton() {
+  return <Skeleton className={styles.resultCountSkeleton} />;
+}
+
 function SearchSkeleton() {
   return (
-    <div style={{ marginTop: "1.5rem" }}>
-      <Skeleton
-        style={{ width: "6rem", height: "1rem", borderRadius: "0.25rem" }}
-      />
-      <Skeleton
-        style={{
-          height: "2.5rem",
-          borderRadius: "0.5rem",
-          marginTop: "0.75rem",
-        }}
-      />
+    <div className={styles.searchSkeleton}>
+      <ResultCountSkeleton />
+      <PaginationSkeleton />
       <RepositoryListSkeleton />
+      <PaginationSkeleton />
     </div>
   );
 }

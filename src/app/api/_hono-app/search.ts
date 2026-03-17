@@ -5,7 +5,11 @@ import {
   validator as effectValidator,
   resolver,
 } from "hono-openapi";
-import { SearchReposQuery, SearchReposResult } from "@/repository/query";
+import {
+  GITHUB_SEARCH_MAX_RESULTS,
+  SearchReposQuery,
+  SearchReposResult,
+} from "@/repository/query";
 
 // ── リクエストスキーマ ──
 
@@ -106,7 +110,10 @@ export class SearchApp extends Effect.Service<SearchApp>()("SearchApp", {
                     {
                       ...data,
                       page,
-                      total_pages: Math.ceil(data.total_count / PER_PAGE),
+                      total_pages: Math.ceil(
+                        Math.min(data.total_count, GITHUB_SEARCH_MAX_RESULTS) /
+                          PER_PAGE,
+                      ),
                     },
                     200,
                   ),
