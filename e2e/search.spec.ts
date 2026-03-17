@@ -9,7 +9,7 @@ test.describe("検索 → 詳細の流れ", () => {
   test("キーワードを入力すると検索結果一覧が表示される", async ({ page }) => {
     await page.goto("/search");
 
-    const input = page.getByRole("searchbox", { name: "Search repositories" });
+    const input = page.getByRole("searchbox", { name: "リポジトリを検索" });
     await input.pressSequentially(SEARCH_QUERY, { delay: 50 });
 
     // リポジトリが少なくとも1件表示される
@@ -23,7 +23,7 @@ test.describe("検索 → 詳細の流れ", () => {
   }) => {
     await page.goto("/search");
 
-    const input = page.getByRole("searchbox", { name: "Search repositories" });
+    const input = page.getByRole("searchbox", { name: "リポジトリを検索" });
     await input.pressSequentially(SEARCH_QUERY, { delay: 50 });
 
     // 最初の結果をクリックして詳細ページに遷移
