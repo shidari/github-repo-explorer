@@ -8,7 +8,7 @@ import {
   searchPageAtom,
   searchQueryAtom,
 } from "@/app/atoms";
-import { Debounce } from "@/components/debounce";
+import { UnsafeSingletonDebounce } from "@/components/debounce";
 import {
   useSWRSuspenseSearchFirstPageResult,
   useSWRSuspenseSearchPageResult,
@@ -42,9 +42,9 @@ export default function SearchPage() {
 
       {query ? (
         <Suspense fallback={<SearchSkeleton />}>
-          <Debounce debounceKey={query} ms={DEBOUNCE_MS}>
+          <UnsafeSingletonDebounce debounceKey={query} ms={DEBOUNCE_MS}>
             <SearchResult query={query} page={page} />
-          </Debounce>
+          </UnsafeSingletonDebounce>
         </Suspense>
       ) : (
         <EmptyState />
