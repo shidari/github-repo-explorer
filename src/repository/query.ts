@@ -10,6 +10,12 @@ const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN,
 });
 
+/**
+ * GitHub Search API は最大1000件までしか返さない
+ * @see https://docs.github.com/en/rest/search/search
+ */
+export const GITHUB_SEARCH_MAX_RESULTS = 1000;
+
 // ── エラー ──
 
 export class RepoNotFoundError extends Data.TaggedError("RepoNotFoundError")<{
@@ -72,7 +78,8 @@ export class SearchReposQuery extends Context.Tag("SearchReposQuery")<
           return yield* Effect.fail(new SearchNoResultError({ query }));
         }
 
-        const totalPages = Math.ceil(total_count / perPage);
+        const effectiveCount = Math.min(total_count, GITHUB_SEARCH_MAX_RESULTS);
+        const totalPages = Math.ceil(effectiveCount / perPage);
         if (page > totalPages) {
           return yield* Effect.fail(
             new PageOutOfRangeError({ page, totalPages }),

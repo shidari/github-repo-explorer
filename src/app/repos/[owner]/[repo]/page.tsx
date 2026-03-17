@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import Link from "next/link";
-import { RepoDetail } from "@/components/features/detail/RepoDetail";
 import { GetRepoByFullNameQuery } from "@/repository/query";
+import { RepoDetailClientPage } from "./_client";
 import styles from "./page.module.css";
 
 export default async function RepoDetailPage({
@@ -16,7 +16,11 @@ export default async function RepoDetailPage({
       const query = yield* GetRepoByFullNameQuery;
       return yield* query.runAction({ owner, repo });
     }).pipe(
-      Effect.provide(GetRepoByFullNameQuery.test),
+      Effect.provide(
+        process.env.NODE_ENV === "production"
+          ? GetRepoByFullNameQuery.main
+          : GetRepoByFullNameQuery.test,
+      ),
       Effect.match({
         onSuccess: (data) => ({ ok: true as const, data }),
         onFailure: (err) => ({ ok: false as const, error: err }),
@@ -37,15 +41,5 @@ export default async function RepoDetailPage({
     );
   }
 
-  const { data } = result;
-
-  return (
-    <main className={styles.container}>
-      <Link href="/search" className={styles.backLink}>
-        &larr; Back to search
-      </Link>
-
-      <RepoDetail repo={data} />
-    </main>
-  );
+  return <RepoDetailClientPage repo={result.data} />;
 }

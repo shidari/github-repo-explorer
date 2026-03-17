@@ -49,8 +49,11 @@ const runnable = mainAppProgram.pipe(
   Effect.provide(RateLimitMiddleware.Default),
   Effect.provide(RateLimitConfigTag.main),
   Effect.provide(process.env.NODE_ENV === "production" ? DB.main : DB.test),
-  // TODO: GitHub API の rate limit 対応後に .main に切り替える
-  Effect.provide(SearchReposQuery.test),
+  Effect.provide(
+    process.env.NODE_ENV === "production"
+      ? SearchReposQuery.main
+      : SearchReposQuery.test,
+  ),
 );
 
 // ── App ──
