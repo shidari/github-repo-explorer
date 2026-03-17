@@ -13,7 +13,6 @@ import {
   useSWRSuspenseSearchFirstPageResult,
   useSWRSuspenseSearchPageResult,
 } from "@/components/features/search/hooks";
-import { formatCount } from "@/components/features/search/RepoOverview";
 import { SearchInput } from "@/components/features/search/SearchInput";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -33,11 +32,17 @@ import styles from "./page.module.css";
 
 const DEBOUNCE_MS = 300;
 
+export function formatCount(n: number): string {
+  if (n >= 1_000_000) return "1M+";
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return String(n);
+}
+
 export default function SearchPage() {
   const [query, setQuery] = useAtom(searchQueryAtom);
   const page = useAtomValue(searchPageAtom);
   return (
-    <main id="main-content">
+    <>
       <SearchInput defaultValue={query} onInputChange={setQuery} />
 
       {query ? (
@@ -49,7 +54,7 @@ export default function SearchPage() {
       ) : (
         <EmptyState />
       )}
-    </main>
+    </>
   );
 }
 
