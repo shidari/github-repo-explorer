@@ -173,34 +173,43 @@ function RepositoryList({ query, page }: { query: string; page: number }) {
 function RepositoryListSkeleton() {
   return (
     <div className={styles.results}>
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
-      <Skeleton style={{ height: "6rem", borderRadius: "0.5rem" }} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
+      <Skeleton className={styles.repositoryListSkeletonItem} />
     </div>
   );
 }
 
+function PaginationSkeleton() {
+  return (
+    <div className={styles.paginationSkeleton}>
+      <Skeleton className={styles.paginationSkeletonItem} />
+      <Skeleton className={styles.paginationSkeletonItem} />
+      <Skeleton className={styles.paginationSkeletonItem} />
+      <Skeleton className={styles.paginationSkeletonItem} />
+      <Skeleton className={styles.paginationSkeletonItem} />
+    </div>
+  );
+}
+
+function ResultCountSkeleton() {
+  return <Skeleton className={styles.resultCountSkeleton} />;
+}
+
 function SearchSkeleton() {
   return (
-    <div style={{ marginTop: "1.5rem" }}>
-      <Skeleton
-        style={{ width: "6rem", height: "1rem", borderRadius: "0.25rem" }}
-      />
-      <Skeleton
-        style={{
-          height: "2.5rem",
-          borderRadius: "0.5rem",
-          marginTop: "0.75rem",
-        }}
-      />
+    <div className={styles.searchSkeleton}>
+      <ResultCountSkeleton />
+      <PaginationSkeleton />
       <RepositoryListSkeleton />
+      <PaginationSkeleton />
     </div>
   );
 }
