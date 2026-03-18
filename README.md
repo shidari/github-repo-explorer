@@ -73,6 +73,7 @@ pnpm build         # プロダクションビルド
   - GitHub Search API の1000件制限に対応し、最大50ページにキャップ
   - ページ番号はスマート表示（前後1ページ + 先頭・末尾 + 省略記号）。shadcn/ui のページネーションコンポーネントをベースに実装
   - SWR の preload による隣接ページの先読みを試みたが、Suspense との噛み合いが悪く断念
+  - ページネーション連打で rate limit に引っかかる問題に対し、現状は UI 上のエラーメッセージ表示で対応。本来はリクエスト中にページネーションを disabled にすべきだが、Suspense を複雑に組み合わせているため実現方法が見つかっていない（`useTransition` 等での対応も難しそう。要調査）
 - **スクロール復元**
   - Jotai の atom に訪問リポジトリを記録し、`data-repo` 属性で DOM 要素を特定して `scrollIntoView` で復元
   - Next.js 組み込みの scroll restoration が現状の設計では効かなかったため自前で実装

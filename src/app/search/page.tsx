@@ -69,7 +69,11 @@ function SearchResult({ query, page }: { query: string; page: number }) {
         <p className={styles.emptyTitle}>
           {result.tag === "notFound"
             ? `No results for "${query}"`
-            : "An error occurred. Please try again later."}
+            : result.tag === "rateLimit"
+              ? "リクエスト回数の上限に達しました。しばらく時間をおいてお試しください。"
+              : result.tag === "validation"
+                ? "検索条件が不正です。キーワードを変更してお試しください。"
+                : "エラーが発生しました。しばらく時間をおいてお試しください。"}
         </p>
       </div>
     );
@@ -132,7 +136,11 @@ function RepositoryList({ query, page }: { query: string; page: number }) {
         <p className={styles.emptyTitle}>
           {result.tag === "notFound"
             ? "No results found"
-            : "An error occurred. Please try again later."}
+            : result.tag === "rateLimit"
+              ? "リクエスト回数の上限に達しました。しばらく時間をおいてお試しください。"
+              : result.tag === "validation"
+                ? "検索条件が不正です。キーワードを変更してお試しください。"
+                : "エラーが発生しました。しばらく時間をおいてお試しください。"}
         </p>
       </div>
     );
