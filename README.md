@@ -82,6 +82,8 @@ pnpm build         # プロダクションビルド
 
 - RSC でデータ取得: `page.tsx`（Server Component）でリポジトリクエリを直接実行しデータを取得
   - Client Component は scroll 復元の副作用のみ担当
+- **RSC キャッシュ（10分）**: Rate Limit は現在フロントエンドからの検索・ページネーション（Hono API 経由）のみをカバーしており、RSC による詳細取得は GitHub API を直接叩く。リポジトリ情報が10分未満で更新されることは稀という判断のもと、`revalidate = 600` でキャッシュして API 呼び出しを抑制
+- **Link prefetch**: 検索結果から詳細ページへの遷移を最適化するため、`prefetch={true}` でフルページデータを事前取得。RSC キャッシュがサーバー上で共有されるため、prefetch によるリクエスト増加は GitHub API への負荷に直結しないと判断
 - Vercel のベストプラクティススキルによるレビューを経て追加:
   - 動的メタデータ（`generateMetadata`）
   - エラーページ（`error.tsx`, `global-error.tsx`, `not-found.tsx`）

@@ -145,6 +145,7 @@ function RepositoryList({ query, page }: { query: string; page: number }) {
           {i > 0 && <ItemSeparator />}
           <Link
             href={`/repos/${repo.full_name}`}
+            prefetch={true}
             className={styles.repoLink}
             data-repo={repo.full_name}
           >

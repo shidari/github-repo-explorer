@@ -5,6 +5,8 @@ import { GetRepoByFullNameQuery } from "@/repository/query";
 import { RepoDetailClientPage } from "./_client";
 import styles from "./page.module.css";
 
+export const revalidate = 600;
+
 type Props = { params: Promise<{ owner: string; repo: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
