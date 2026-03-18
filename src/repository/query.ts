@@ -1,3 +1,4 @@
+import { RequestError } from "@octokit/request-error";
 import { Octokit } from "@octokit/rest";
 import { Context, Data, Effect, Layer, Schema } from "effect";
 import { Repository } from "@/domain";
@@ -29,6 +30,40 @@ export class SearchNoResultError extends Data.TaggedError(
   query: string;
 }> {}
 
+// GitHub Search API: GET /search/repositories
+// @see https://docs.github.com/en/rest/search/search#search-repositories
+// @see https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
+//   403 / 429 — rate limit 超過（認証なし: 10req/min、認証あり: 30req/min）
+//   422 — バリデーションエラー（不正なクエリ構文等）
+//   503 — サービス一時不可
+// TODO: Unexpected をつけたが命名引き続き検討中
+export class SearchApiUnexpectedError extends Data.TaggedError(
+  "SearchApiUnexpectedError",
+)<{
+  reason: "rateLimit" | "validation" | "serviceUnavailable" | "unknown";
+  message: string;
+}> {}
+
+// GitHub Repos API: GET /repos/{owner}/{repo}
+// @see https://docs.github.com/en/rest/repos/repos#get-a-repository
+// @see https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
+//   403 / 429 — rate limit 超過
+// TODO: Unexpected をつけたが命名引き続き検討中
+export class ReposApiUnexpectedError extends Data.TaggedError(
+  "ReposApiUnexpectedError",
+)<{
+  reason: "rateLimit" | "unknown";
+  message: string;
+}> {}
+
+export type GitHubApiError = SearchApiUnexpectedError | ReposApiUnexpectedError;
+
+export type GitHubSearchReposError =
+  | SearchNoResultError
+  | PageOutOfRangeError
+  | SearchApiUnexpectedError;
+export type GitHubGetRepoError = RepoNotFoundError | ReposApiUnexpectedError;
+
 export class PageOutOfRangeError extends Data.TaggedError(
   "PageOutOfRangeError",
 )<{
@@ -53,10 +88,7 @@ export class SearchReposQuery extends Context.Tag("SearchReposQuery")<
       query: string;
       page: number;
       perPage: number;
-    }) => Effect.Effect<
-      SearchReposResult,
-      SearchNoResultError | PageOutOfRangeError
-    >;
+    }) => Effect.Effect<SearchReposResult, GitHubSearchReposError>;
   }
 >() {
   static readonly main = Layer.succeed(SearchReposQuery, {
@@ -69,7 +101,30 @@ export class SearchReposQuery extends Context.Tag("SearchReposQuery")<
               page,
               per_page: perPage,
             }),
-          catch: () => new SearchNoResultError({ query }),
+          catch: (err) => {
+            const status = err instanceof RequestError ? err.status : 500;
+            const message = err instanceof Error ? err.message : String(err);
+            console.error("[SearchReposQuery] GitHub API error:", {
+              status,
+              message,
+              query,
+              page,
+            });
+            const reason = (() => {
+              switch (status) {
+                case 403:
+                case 429:
+                  return "rateLimit" as const;
+                case 422:
+                  return "validation" as const;
+                case 503:
+                  return "serviceUnavailable" as const;
+                default:
+                  return "unknown" as const;
+              }
+            })();
+            return new SearchApiUnexpectedError({ reason, message });
+          },
         });
 
         const { total_count, items } = res.data;
@@ -144,7 +199,10 @@ export class GetRepoByFullNameQuery extends Context.Tag(
     readonly runAction: (params: {
       owner: string;
       repo: string;
-    }) => Effect.Effect<Repository, RepoNotFoundError>;
+    }) => Effect.Effect<
+      Repository,
+      RepoNotFoundError | ReposApiUnexpectedError
+    >;
   }
 >() {
   static readonly main = Layer.succeed(GetRepoByFullNameQuery, {
@@ -152,7 +210,29 @@ export class GetRepoByFullNameQuery extends Context.Tag(
       Effect.gen(function* () {
         const res = yield* Effect.tryPromise({
           try: () => octokit.repos.get({ owner, repo }),
-          catch: () => new RepoNotFoundError({ owner, repo }),
+          catch: (err) => {
+            if (err instanceof RequestError && err.status === 404) {
+              return new RepoNotFoundError({ owner, repo });
+            }
+            const status = err instanceof RequestError ? err.status : 500;
+            const message = err instanceof Error ? err.message : String(err);
+            console.error("[GetRepoByFullNameQuery] GitHub API error:", {
+              status,
+              message,
+              owner,
+              repo,
+            });
+            const reason = (() => {
+              switch (status) {
+                case 403:
+                case 429:
+                  return "rateLimit" as const;
+                default:
+                  return "unknown" as const;
+              }
+            })();
+            return new ReposApiUnexpectedError({ reason, message });
+          },
         });
 
         const r = res.data;
