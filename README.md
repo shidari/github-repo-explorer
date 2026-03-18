@@ -210,6 +210,7 @@ Client → [1段目: Edge proxy] → [2段目: Hono ミドルウェア] → GitH
 - 1段目をインメモリにした背景: API Routes ではサーバーの立ち上げコードを触れず、DB コネクションのライフサイクル管理ができないため、コネクションプールが溢れる恐れがある
 - 通常の利用では debounce + SWR キャッシュにより 10req/min 程度に収まると想定。バーストリクエストは1段目で遮断
 - GitHub Search API の `total_count` は実際のヒット数（数千万件）を返すが、取得可能なのは最大1000件。`GITHUB_SEARCH_MAX_RESULTS = 1000` で `total_pages` をキャップし、アクセス不可能なページへの遷移を防止
+- **Race Condition 対策**: 2段目の Token bucket は `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` でトークンの読み取り・計算・書き込みを1つの SQL 文に集約し、同時リクエストによる race condition を防止している
 
 ---
 
