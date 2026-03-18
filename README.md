@@ -148,7 +148,7 @@ Vercel 公開のベストプラクティススキル（`web-design-guidelines`, 
 ```
 src/
 ├── domain/           # ドメインモデル（Effect Schema で定義）
-├── repository/       # 外部データソースへのアクセス（CQRS: query / command）
+├── repository/       # 外部データソースへのアクセス（Command パターン）
 │   ├── query.ts      #   SearchReposQuery / GetRepoByFullNameQuery
 │   └── mock.ts       #   Effect Schema の Arbitrary + faker-js でモックデータを生成（seed 固定で E2E と一致させる）
 ├── app/api/
@@ -167,6 +167,7 @@ src/
   - GitHub API への接続とドメインモデルへの変換
   - Repository パターンのインターフェース肥大化を避けるため、Command パターン（AWS SDK v3 に着想）で操作単位にインターフェースを分割
   - `Tag` + `Layer` で抽象化し、本番（GitHub API）とテスト（モックデータ）をレイヤー切り替えで差し替え可能
+  - GitHub API のエラーを API ごとに型付きで分類（`SearchApiUnexpectedError` / `ReposApiUnexpectedError`）。HTTP ステータスを `reason`（`rateLimit` / `validation` / `serviceUnavailable` / `unknown`）にマッピングし、上位層でのハンドリングを容易にした
 - **API Routes 層**
   - フロントエンド（Client Component）から叩かれるものだけを Hono の API として実装
   - RSC で使うデータ取得は API を経由せず `repository/query` を直接呼び出す

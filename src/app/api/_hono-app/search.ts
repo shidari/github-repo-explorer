@@ -72,6 +72,22 @@ const searchRoute = describeRoute({
         },
       },
     },
+    "429": {
+      description: "GitHub API rate limit 超過",
+      content: {
+        "application/json": {
+          schema: resolver(Schema.standardSchemaV1(errorResponseSchema)),
+        },
+      },
+    },
+    "500": {
+      description: "サーバー側の不明なエラー",
+      content: {
+        "application/json": {
+          schema: resolver(Schema.standardSchemaV1(errorResponseSchema)),
+        },
+      },
+    },
   },
 });
 
@@ -131,6 +147,16 @@ export class SearchApp extends Effect.Service<SearchApp>()("SearchApp", {
                         },
                         400,
                       );
+                    case "SearchApiUnexpectedError":
+                      switch (err.reason) {
+                        case "rateLimit":
+                          return c.json({ message: err.message }, 429);
+                        case "validation":
+                          return c.json({ message: err.message }, 400);
+                        default:
+                          return c.json({ message: err.message }, 500);
+                      }
+                    // eslint-disable-next-line no-fallthrough
                     default:
                       return err satisfies never;
                   }

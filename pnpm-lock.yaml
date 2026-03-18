@@ -20,6 +20,9 @@ importers:
       '@hono/swagger-ui':
         specifier: 0.6.1
         version: 0.6.1(hono@4.12.8)
+      '@octokit/request-error':
+        specifier: 7.1.0
+        version: 7.1.0
       '@octokit/rest':
         specifier: 22.0.1
         version: 22.0.1
