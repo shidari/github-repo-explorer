@@ -232,6 +232,13 @@ Client → [1段目: Edge proxy] → [2段目: Hono ミドルウェア] → GitH
   - バーストリクエストは1段目で遮断
 - **Race Condition 対策**: 2段目の Token bucket は `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` で1つの SQL 文に集約
   - トークンの読み取り・計算・書き込みを原子的に実行し、同時リクエストによる race condition を防止
+- **per-user + global の2層 Token Bucket**: ユーザーごとの公平性（per-user）と GitHub API quota の保護（global）を分離
+  - per-user: Cookie 単位で1ユーザーの独占を防止
+  - global: `client_id = "global"` の共有行でサーバー全体のリクエスト数を制限し、GitHub API の rate limit（認証あり: 30req/min）内に収める
+  - 想定ケース:
+    - 1人が連打 → per-user で制限（global は余裕あり）
+    - 3人が同時に 10req/min ずつ → global で合計 30req/min に制限
+    - 多数のユーザーが同時利用 → global が先に枯渇し、全ユーザーに 429。1人が使い切ると他ユーザーも影響を受けるが、per-user があるため1人の独占は防止される
 - GitHub Search API の `total_count` は実際のヒット数（数千万件）を返すが、取得可能なのは最大1000件
   - `GITHUB_SEARCH_MAX_RESULTS = 1000` で `total_pages` をキャップし、アクセス不可能なページへの遷移を防止
 
