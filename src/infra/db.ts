@@ -8,12 +8,16 @@ import {
   type Dialect,
   type Driver,
   Kysely,
+  type Migration,
+  type MigrationProvider,
+  Migrator,
   PostgresAdapter,
   PostgresIntrospector,
   PostgresQueryCompiler,
   type QueryCompiler,
 } from "kysely";
 import type { DB as Database } from "./__generated__/db.d";
+import * as m001 from "./migrations/001_create_token_buckets";
 
 export type { Database };
 
@@ -88,16 +92,18 @@ class PGliteDialect implements Dialect {
 // ノード間でカウントが共有されず、分散環境では不完全（要調査）。
 // 完全な対策には Vercel KV（Redis）等の共有ストアが必要。
 
+const migrationProvider: MigrationProvider = {
+  async getMigrations(): Promise<Record<string, Migration>> {
+    return {
+      "001_create_token_buckets": m001,
+    };
+  },
+};
+
 async function migrate(db: Kysely<Database>) {
-  await db.schema
-    .createTable("token_buckets")
-    .ifNotExists()
-    .addColumn("client_id", "text", (col) => col.primaryKey())
-    .addColumn("tokens", "real", (col) => col.notNull())
-    .addColumn("last_refill", "timestamptz", (col) =>
-      col.notNull().defaultTo(db.fn("now")),
-    )
-    .execute();
+  const migrator = new Migrator({ db, provider: migrationProvider });
+  const { error } = await migrator.migrateToLatest();
+  if (error) throw error;
 }
 
 export class DB extends Context.Tag("DB")<
