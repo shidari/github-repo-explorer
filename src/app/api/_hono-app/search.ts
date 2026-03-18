@@ -13,9 +13,9 @@ import {
 
 // ── リクエストスキーマ ──
 
-export const NonNegativeIntFromString = Schema.NumberFromString.pipe(
+export const PositiveIntFromString = Schema.NumberFromString.pipe(
   Schema.int(),
-  Schema.greaterThanOrEqualTo(0),
+  Schema.greaterThanOrEqualTo(1),
 );
 
 const PER_PAGE = 20;
@@ -24,7 +24,7 @@ const searchQuerySchema = Schema.Struct({
   q: Schema.String.pipe(Schema.nonEmptyString()).annotations({
     description: "検索キーワード",
   }),
-  page: Schema.optionalWith(NonNegativeIntFromString, {
+  page: Schema.optionalWith(PositiveIntFromString, {
     default: () => 1,
   }).annotations({
     description: "ページ番号（1始まり、デフォルト: 1）",
