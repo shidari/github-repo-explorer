@@ -17,6 +17,7 @@ export const mainAppProgram = Effect.gen(function* () {
   const { middleware: rateLimitMiddleware } = yield* RateLimitMiddleware;
 
   const app = new Hono()
+    .use(internalAuthMiddleware)
     .basePath("/api")
     .use(rateLimitMiddleware)
     .route("/search", searchApp);
