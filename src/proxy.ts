@@ -1,3 +1,5 @@
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 import { Config, ConfigProvider, Context, Effect, Layer } from "effect";
 import { CompactSign, compactVerify } from "jose";
 
@@ -22,6 +24,57 @@ export class EdgeRateLimitConfigTag extends Context.Tag("EdgeRateLimitConfig")<
   });
 }
 
+// ── GlobalRateLimiter ──
+
+export class GlobalRateLimiter extends Context.Tag("GlobalRateLimiter")<
+  GlobalRateLimiter,
+  { limit: () => Promise<boolean> }
+>() {
+  static readonly main = Layer.effect(
+    GlobalRateLimiter,
+    Effect.gen(function* () {
+      const url = yield* Config.string("KV_REST_API_URL");
+      const token = yield* Config.string("KV_REST_API_TOKEN");
+
+      const ratelimit = new Ratelimit({
+        redis: new Redis({ url, token }),
+        limiter: Ratelimit.fixedWindow(100, "1 m"),
+        prefix: "global",
+      });
+
+      return {
+        limit: async () => {
+          const { success } = await ratelimit.limit("global");
+          return success;
+        },
+      };
+    }),
+  );
+
+  // テスト用: in-memory の固定ウィンドウ実装。
+  // NOTE: 本番の Upstash Redis（fixedWindow）と完全に一致するわけではないため、
+  // 境界値付近の挙動に若干のズレが生じる可能性がある。
+  static readonly test = Layer.succeed(
+    GlobalRateLimiter,
+    (() => {
+      const maxRequests = 100;
+      let count = 0;
+      let resetAt = Date.now() + 60_000;
+      return {
+        limit: async () => {
+          const now = Date.now();
+          if (now > resetAt) {
+            count = 0;
+            resetAt = now + 60_000;
+          }
+          count++;
+          return count <= maxRequests;
+        },
+      };
+    })(),
+  );
+}
+
 // ── JWS helpers ──
 
 async function signClientId(clientId: string, secret: Uint8Array) {
@@ -39,6 +92,7 @@ async function verifyClientId(token: string, secret: Uint8Array) {
 
 export const proxyProgram = Effect.gen(function* () {
   const rateLimitConfig = yield* EdgeRateLimitConfigTag;
+  const globalRateLimiter = yield* GlobalRateLimiter;
   // client_id cookie の JWS 署名・検証に使う鍵。未設定時（dev / CI）は "test-token" をデフォルト値とする
   const rawSecret = yield* Config.string("CLIENT_ID_SIGNING_SECRET").pipe(
     Config.withDefault("test-token"),
@@ -54,6 +108,17 @@ export const proxyProgram = Effect.gen(function* () {
     }
 
     try {
+      // グローバル rate limit チェック（Upstash Redis / KV）。
+      // IP 偽装による per-IP 制限バイパスを防ぐための絶対的な上限。
+      // 本番は GlobalRateLimiter.main（Upstash Redis）、dev / CI は testWithLimit(∞) が注入される。
+      const globalAllowed = await globalRateLimiter.limit();
+      if (!globalAllowed) {
+        return NextResponse.json(
+          { message: "Too many requests" },
+          { status: 429 },
+        );
+      }
+
       // IP ベースのバーストリクエストを遮断する。
       // NOTE: DB コネクションプールの枯渇を防ぐための IP ベース rate limit。
       // Edge が複数ノードで動作する場合、ノード間でカウントが共有されず不完全（未検証）。
@@ -129,6 +194,11 @@ export const proxyProgram = Effect.gen(function* () {
 
 const runnable = proxyProgram.pipe(
   Effect.provide(EdgeRateLimitConfigTag.main),
+  Effect.provide(
+    process.env.NODE_ENV === "production"
+      ? GlobalRateLimiter.main
+      : GlobalRateLimiter.test,
+  ),
   Effect.withConfigProvider(ConfigProvider.fromEnv()),
 );
 
