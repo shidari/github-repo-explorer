@@ -26,8 +26,9 @@ export class EdgeRateLimitConfigTag extends Context.Tag("EdgeRateLimitConfig")<
 export const proxyProgram = Effect.gen(function* () {
   const rateLimitConfig = yield* EdgeRateLimitConfigTag;
   // proxy を経由せず API Routes を直接叩くことを防ぐための x-internal-token
+  // INTERNAL_API_TOKEN 未設定時（dev / CI）は "dev-token" をデフォルト値とする
   const internalToken = yield* Config.string("INTERNAL_API_TOKEN").pipe(
-    Config.withDefault(""),
+    Config.withDefault("test-token"),
   );
 
   const counter = new Map<IP_ADDRESS, { count: number; resetAt: number }>();

@@ -9,7 +9,10 @@ export class InternalAuthConfigTag extends Context.Tag("InternalAuthConfig")<
 >() {
   static readonly main = Layer.effect(
     InternalAuthConfigTag,
-    Effect.sync(() => ({ token: process.env.INTERNAL_API_TOKEN ?? "" })),
+    // INTERNAL_API_TOKEN 未設定時（dev / CI）は "dev-token" をデフォルト値とする
+    Effect.sync(() => ({
+      token: process.env.INTERNAL_API_TOKEN ?? "test-token",
+    })),
   );
 
   static readonly test = Layer.succeed(InternalAuthConfigTag, {

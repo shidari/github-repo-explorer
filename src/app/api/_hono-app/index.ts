@@ -53,7 +53,11 @@ export const mainAppProgram = Effect.gen(function* () {
 const runnable = mainAppProgram.pipe(
   Effect.provide(SearchApp.Default),
   Effect.provide(InternalAuthMiddleware.Default),
-  Effect.provide(InternalAuthConfigTag.main),
+  Effect.provide(
+    process.env.NODE_ENV === "production"
+      ? InternalAuthConfigTag.main
+      : InternalAuthConfigTag.test,
+  ),
   Effect.provide(RateLimitMiddleware.Default),
   Effect.provide(RateLimitConfigTag.main),
   Effect.provide(process.env.NODE_ENV === "production" ? DB.main : DB.test),
