@@ -2,9 +2,16 @@ import useSWR from "swr";
 import { client } from "@/app/api/_client";
 
 async function fetcher([, q, page]: [string, string, number]) {
-  const res = await client.api.search.$get({
+  let res = await client.api.search.$get({
     query: { q, page: String(page) },
   });
+
+  // 初回訪問時は cookie 未発行のため 425 が返る。cookie が自動セットされるのでそのままリトライ
+  const status: number = res.status;
+  if (status === 425) {
+    res = await client.api.search.$get({ query: { q, page: String(page) } });
+  }
+
   if (!res.ok) {
     const error = await res.json();
     const tag = (() => {

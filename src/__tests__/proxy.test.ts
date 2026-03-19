@@ -1,4 +1,5 @@
 import { ConfigProvider, Effect, Layer } from "effect";
+import { CompactSign } from "jose";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EdgeRateLimitConfigTag, proxyProgram } from "@/proxy";
@@ -6,11 +7,11 @@ import { EdgeRateLimitConfigTag, proxyProgram } from "@/proxy";
 function createTestMiddleware({
   windowMs,
   maxRequests,
-  internalToken = "",
+  signingSecret = "test-token",
 }: {
   windowMs: number;
   maxRequests: number;
-  internalToken?: string;
+  signingSecret?: string;
 }) {
   return Effect.runSync(
     proxyProgram.pipe(
@@ -19,11 +20,38 @@ function createTestMiddleware({
       ),
       Effect.withConfigProvider(
         ConfigProvider.fromMap(
-          new Map([["INTERNAL_API_TOKEN", internalToken]]),
+          new Map([["CLIENT_ID_SIGNING_SECRET", signingSecret]]),
         ),
       ),
     ),
   );
+}
+
+async function createSignedToken(
+  clientId: string,
+  secret: string,
+): Promise<string> {
+  return new CompactSign(new TextEncoder().encode(clientId))
+    .setProtectedHeader({ alg: "HS256" })
+    .sign(new TextEncoder().encode(secret));
+}
+
+async function createRequestWithCookie({
+  ip,
+  path,
+  secret = "test-token",
+}: {
+  ip: string;
+  path: string;
+  secret?: string;
+}) {
+  const token = await createSignedToken(crypto.randomUUID(), secret);
+  return new NextRequest(`http://localhost${path}`, {
+    headers: {
+      "x-forwarded-for": ip,
+      cookie: `client_id=${token}`,
+    },
+  });
 }
 
 function createRequest({ ip, path }: { ip: string; path: string }) {
@@ -32,47 +60,45 @@ function createRequest({ ip, path }: { ip: string; path: string }) {
   });
 }
 
-describe("x-internal-token 注入", () => {
-  it("INTERNAL_API_TOKEN が x-internal-token としてリクエストに付与される", () => {
-    const middleware = createTestMiddleware({
-      windowMs: 1_000,
-      maxRequests: 10,
-      internalToken: "test-secret",
-    });
-    const request = createRequest({
-      ip: "10.0.0.1",
-      path: "/api/search?q=react",
-    });
-
-    const response = middleware(request);
-    expect(response.headers.get("x-middleware-request-x-internal-token")).toBe(
-      "test-secret",
-    );
-  });
-});
-
 describe("x-client-id 注入", () => {
-  it("cookie に client_id があれば x-client-id にそのまま使う", () => {
+  it("有効な JWS トークン cookie があれば x-client-id にそのまま使う", async () => {
     const middleware = createTestMiddleware({
       windowMs: 1_000,
       maxRequests: 10,
     });
     const existingId = "existing-client-id";
+    const token = await createSignedToken(existingId, "test-token");
     const request = new NextRequest("http://localhost/api/search?q=react", {
       headers: {
         "x-forwarded-for": "10.0.0.1",
-        cookie: `client_id=${existingId}`,
+        cookie: `client_id=${token}`,
       },
     });
 
-    const response = middleware(request);
+    const response = await middleware(request);
     expect(response.headers.get("x-middleware-request-x-client-id")).toBe(
       existingId,
     );
     expect(response.headers.get("set-cookie")).toBeNull();
   });
 
-  it("cookie に client_id がなければ新規発行して set-cookie にセットする", () => {
+  it("署名が不正な cookie は 500 を返す", async () => {
+    const middleware = createTestMiddleware({
+      windowMs: 1_000,
+      maxRequests: 10,
+    });
+    const request = new NextRequest("http://localhost/api/search?q=react", {
+      headers: {
+        "x-forwarded-for": "10.0.0.1",
+        cookie: "client_id=tampered-token",
+      },
+    });
+
+    const response = await middleware(request);
+    expect(response.status).toBe(500);
+  });
+
+  it("cookie がなければ 425 を返して set-cookie にセットする", async () => {
     const middleware = createTestMiddleware({
       windowMs: 1_000,
       maxRequests: 10,
@@ -82,12 +108,9 @@ describe("x-client-id 注入", () => {
       path: "/api/search?q=react",
     });
 
-    const response = middleware(request);
-    const clientId = response.headers.get("x-middleware-request-x-client-id");
-    expect(clientId).toBeTruthy();
-    expect(response.headers.get("set-cookie")).toContain(
-      `client_id=${clientId}`,
-    );
+    const response = await middleware(request);
+    expect(response.status).toBe(425);
+    expect(response.headers.get("set-cookie")).toContain("client_id=");
   });
 });
 
@@ -100,20 +123,20 @@ describe("Edge rate limiter", () => {
     vi.useRealTimers();
   });
 
-  it("制限内のリクエストは 200 を返す", () => {
+  it("制限内のリクエストは 200 を返す", async () => {
     const middleware = createTestMiddleware({
       windowMs: 1_000,
       maxRequests: 2,
     });
-    const request = createRequest({
+    const request = await createRequestWithCookie({
       ip: "10.0.0.1",
       path: "/api/search?q=react",
     });
 
-    expect(middleware(request).status).toBe(200);
+    expect((await middleware(request)).status).toBe(200);
   });
 
-  it("API Route 以外はスルーする", () => {
+  it("API Route 以外はスルーする", async () => {
     const middleware = createTestMiddleware({
       windowMs: 1_000,
       maxRequests: 1,
@@ -121,26 +144,26 @@ describe("Edge rate limiter", () => {
     const request1 = createRequest({ ip: "10.0.0.2", path: "/search" });
     const request2 = createRequest({ ip: "10.0.0.2", path: "/search" });
 
-    expect(middleware(request1).status).toBe(200);
-    expect(middleware(request2).status).toBe(200);
+    expect((await middleware(request1)).status).toBe(200);
+    expect((await middleware(request2)).status).toBe(200);
   });
 
-  it("制限を超えたら 429 を返す", () => {
+  it("制限を超えたら 429 を返す", async () => {
     const middleware = createTestMiddleware({
       windowMs: 1_000,
       maxRequests: 2,
     });
-    const request = createRequest({
+    const request = await createRequestWithCookie({
       ip: "10.0.0.3",
       path: "/api/search?q=react",
     });
 
-    expect(middleware(request).status).toBe(200);
-    expect(middleware(request).status).toBe(200);
-    expect(middleware(request).status).toBe(429);
+    expect((await middleware(request)).status).toBe(200);
+    expect((await middleware(request)).status).toBe(200);
+    expect((await middleware(request)).status).toBe(429);
   });
 
-  it("ウィンドウ経過後にカウントがリセットされる", () => {
+  it("ウィンドウ経過後にカウントがリセットされる", async () => {
     const now = new Date("2026-01-01T00:00:00Z").getTime();
     vi.setSystemTime(now);
 
@@ -148,37 +171,37 @@ describe("Edge rate limiter", () => {
       windowMs: 1_000,
       maxRequests: 2,
     });
-    const request = createRequest({
+    const request = await createRequestWithCookie({
       ip: "10.0.0.6",
       path: "/api/search?q=react",
     });
 
-    expect(middleware(request).status).toBe(200);
-    expect(middleware(request).status).toBe(200);
-    expect(middleware(request).status).toBe(429);
+    expect((await middleware(request)).status).toBe(200);
+    expect((await middleware(request)).status).toBe(200);
+    expect((await middleware(request)).status).toBe(429);
 
     vi.setSystemTime(now + 1_001);
 
-    expect(middleware(request).status).toBe(200);
+    expect((await middleware(request)).status).toBe(200);
   });
 
-  it("異なる IP は別カウント", () => {
+  it("異なる IP は別カウント", async () => {
     const middleware = createTestMiddleware({
       windowMs: 1_000,
       maxRequests: 2,
     });
-    const requestA = createRequest({
+    const requestA = await createRequestWithCookie({
       ip: "10.0.0.4",
       path: "/api/search?q=react",
     });
-    const requestB = createRequest({
+    const requestB = await createRequestWithCookie({
       ip: "10.0.0.5",
       path: "/api/search?q=react",
     });
 
-    expect(middleware(requestA).status).toBe(200);
-    expect(middleware(requestA).status).toBe(200);
-    expect(middleware(requestA).status).toBe(429);
-    expect(middleware(requestB).status).toBe(200);
+    expect((await middleware(requestA)).status).toBe(200);
+    expect((await middleware(requestA)).status).toBe(200);
+    expect((await middleware(requestA)).status).toBe(429);
+    expect((await middleware(requestB)).status).toBe(200);
   });
 });
