@@ -2,7 +2,11 @@ import { ConfigProvider, Effect, Layer } from "effect";
 import { CompactSign } from "jose";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EdgeRateLimitConfigTag, proxyProgram } from "@/proxy";
+import {
+  EdgeRateLimitConfigTag,
+  GlobalRateLimiter,
+  proxyProgram,
+} from "@/proxy";
 
 function createTestMiddleware({
   windowMs,
@@ -18,6 +22,7 @@ function createTestMiddleware({
       Effect.provide(
         Layer.succeed(EdgeRateLimitConfigTag, { windowMs, maxRequests }),
       ),
+      Effect.provide(GlobalRateLimiter.test),
       Effect.withConfigProvider(
         ConfigProvider.fromMap(
           new Map([["CLIENT_ID_SIGNING_SECRET", signingSecret]]),
@@ -62,7 +67,7 @@ function createRequest({ ip, path }: { ip: string; path: string }) {
 
 describe("x-client-id 注入", () => {
   it("有効な JWS トークン cookie があれば x-client-id にそのまま使う", async () => {
-    const middleware = createTestMiddleware({
+    const proxy = createTestMiddleware({
       windowMs: 1_000,
       maxRequests: 10,
     });
@@ -75,7 +80,7 @@ describe("x-client-id 注入", () => {
       },
     });
 
-    const response = await middleware(request);
+    const response = await proxy(request);
     expect(response.headers.get("x-middleware-request-x-client-id")).toBe(
       existingId,
     );
@@ -83,7 +88,7 @@ describe("x-client-id 注入", () => {
   });
 
   it("署名が不正な cookie は 500 を返す", async () => {
-    const middleware = createTestMiddleware({
+    const proxy = createTestMiddleware({
       windowMs: 1_000,
       maxRequests: 10,
     });
@@ -94,12 +99,12 @@ describe("x-client-id 注入", () => {
       },
     });
 
-    const response = await middleware(request);
+    const response = await proxy(request);
     expect(response.status).toBe(500);
   });
 
   it("cookie がなければ 425 を返して set-cookie にセットする", async () => {
-    const middleware = createTestMiddleware({
+    const proxy = createTestMiddleware({
       windowMs: 1_000,
       maxRequests: 10,
     });
@@ -108,9 +113,42 @@ describe("x-client-id 注入", () => {
       path: "/api/search?q=react",
     });
 
-    const response = await middleware(request);
+    const response = await proxy(request);
     expect(response.status).toBe(425);
     expect(response.headers.get("set-cookie")).toContain("client_id=");
+  });
+});
+
+// NOTE: GlobalRateLimiter.test は in-memory 実装のため本番の Upstash Redis（fixedWindow）と
+// 完全に一致しない。境界値付近の挙動に若干のズレが生じる可能性がある。
+describe("Global rate limiter", () => {
+  it("グローバル制限を超えたら 429 を返す", async () => {
+    const proxy = Effect.runSync(
+      proxyProgram.pipe(
+        Effect.provide(
+          Layer.succeed(EdgeRateLimitConfigTag, {
+            windowMs: 60_000,
+            maxRequests: 1_000,
+          }),
+        ),
+        Effect.provide(
+          Layer.succeed(GlobalRateLimiter, {
+            limit: async () => false,
+          }),
+        ),
+        Effect.withConfigProvider(
+          ConfigProvider.fromMap(
+            new Map([["CLIENT_ID_SIGNING_SECRET", "test-token"]]),
+          ),
+        ),
+      ),
+    );
+    const request = await createRequestWithCookie({
+      ip: "10.0.0.1",
+      path: "/api/search?q=react",
+    });
+
+    expect((await proxy(request)).status).toBe(429);
   });
 });
 
@@ -124,7 +162,7 @@ describe("Edge rate limiter", () => {
   });
 
   it("制限内のリクエストは 200 を返す", async () => {
-    const middleware = createTestMiddleware({
+    const proxy = createTestMiddleware({
       windowMs: 1_000,
       maxRequests: 2,
     });
@@ -133,23 +171,23 @@ describe("Edge rate limiter", () => {
       path: "/api/search?q=react",
     });
 
-    expect((await middleware(request)).status).toBe(200);
+    expect((await proxy(request)).status).toBe(200);
   });
 
   it("API Route 以外はスルーする", async () => {
-    const middleware = createTestMiddleware({
+    const proxy = createTestMiddleware({
       windowMs: 1_000,
       maxRequests: 1,
     });
     const request1 = createRequest({ ip: "10.0.0.2", path: "/search" });
     const request2 = createRequest({ ip: "10.0.0.2", path: "/search" });
 
-    expect((await middleware(request1)).status).toBe(200);
-    expect((await middleware(request2)).status).toBe(200);
+    expect((await proxy(request1)).status).toBe(200);
+    expect((await proxy(request2)).status).toBe(200);
   });
 
   it("制限を超えたら 429 を返す", async () => {
-    const middleware = createTestMiddleware({
+    const proxy = createTestMiddleware({
       windowMs: 1_000,
       maxRequests: 2,
     });
@@ -158,16 +196,16 @@ describe("Edge rate limiter", () => {
       path: "/api/search?q=react",
     });
 
-    expect((await middleware(request)).status).toBe(200);
-    expect((await middleware(request)).status).toBe(200);
-    expect((await middleware(request)).status).toBe(429);
+    expect((await proxy(request)).status).toBe(200);
+    expect((await proxy(request)).status).toBe(200);
+    expect((await proxy(request)).status).toBe(429);
   });
 
   it("ウィンドウ経過後にカウントがリセットされる", async () => {
     const now = new Date("2026-01-01T00:00:00Z").getTime();
     vi.setSystemTime(now);
 
-    const middleware = createTestMiddleware({
+    const proxy = createTestMiddleware({
       windowMs: 1_000,
       maxRequests: 2,
     });
@@ -176,17 +214,17 @@ describe("Edge rate limiter", () => {
       path: "/api/search?q=react",
     });
 
-    expect((await middleware(request)).status).toBe(200);
-    expect((await middleware(request)).status).toBe(200);
-    expect((await middleware(request)).status).toBe(429);
+    expect((await proxy(request)).status).toBe(200);
+    expect((await proxy(request)).status).toBe(200);
+    expect((await proxy(request)).status).toBe(429);
 
     vi.setSystemTime(now + 1_001);
 
-    expect((await middleware(request)).status).toBe(200);
+    expect((await proxy(request)).status).toBe(200);
   });
 
   it("異なる IP は別カウント", async () => {
-    const middleware = createTestMiddleware({
+    const proxy = createTestMiddleware({
       windowMs: 1_000,
       maxRequests: 2,
     });
@@ -199,9 +237,9 @@ describe("Edge rate limiter", () => {
       path: "/api/search?q=react",
     });
 
-    expect((await middleware(requestA)).status).toBe(200);
-    expect((await middleware(requestA)).status).toBe(200);
-    expect((await middleware(requestA)).status).toBe(429);
-    expect((await middleware(requestB)).status).toBe(200);
+    expect((await proxy(requestA)).status).toBe(200);
+    expect((await proxy(requestA)).status).toBe(200);
+    expect((await proxy(requestA)).status).toBe(429);
+    expect((await proxy(requestB)).status).toBe(200);
   });
 });

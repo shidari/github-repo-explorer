@@ -192,6 +192,7 @@ SearchReposQuery       .main ← GitHub API      / .test ← モックデータ
 GetRepoByFullNameQuery .main ← GitHub API      / .test ← モックデータ
 DB                     .main ← Vercel Postgres / .test ← PGlite
 RateLimitConfigTag     .main ← 本番設定        / .test ← テスト設定
+GlobalRateLimiter      .main ← Upstash Redis   / .test ← インメモリ固定ウィンドウ
 ```
 
 - `NODE_ENV === "production"` で全レイヤーを一括切り替え
@@ -226,7 +227,8 @@ sequenceDiagram
     else 署名不正
         P-->>C: 500
     end
-    P->>P: IP rate limit チェック
+    P->>P: グローバル rate limit チェック (Upstash Redis)
+    P->>P: IP rate limit チェック (インメモリ)
     P->>P: JWS 署名検証 → UUID 取り出し
     P->>H: GET /api/search (x-client-id: <uuid>)
     H->>H: Token bucket チェック (Postgres)
@@ -240,10 +242,11 @@ sequenceDiagram
 | **目的** | バーストリクエストの遮断・client_id 発行 | GitHub API rate limit 保護 |
 | **方式** | IP ベース（30req/min）+ JWS 署名 cookie 発行・検証 + `x-client-id` 付与 | Token bucket |
 | **実行環境** | Next.js 16 `proxy.ts`（API ルートのみ） | Node.js Runtime |
-| **ストレージ** | インメモリ | Vercel Postgres |
-| **ストレージ選定理由** | 要件的に厳密さより手軽さを優先しインメモリを採用 | 無料で Vercel コンソールから管理可能 |
+| **ストレージ** | グローバル: Upstash Redis / IP: インメモリ | Vercel Postgres |
+| **ストレージ選定理由** | グローバルは分散ノード間共有のため Redis。IP は手軽さ優先でインメモリ | 無料で Vercel コンソールから管理可能 |
 
-- 1段目をインメモリにした背景
+- **グローバル rate limit（Upstash Redis）**: IP 偽装による per-IP 制限バイパスを防ぐための絶対的な上限（100req/min）。Vercel KV（Upstash Redis）を使うことでノード間共有を実現。`KV_REST_API_URL` / `KV_REST_API_TOKEN` 環境変数で接続
+- 1段目 IP rate limit をインメモリにした背景
   - API Routes ではサーバーの立ち上げコードを触れず、DB コネクションのライフサイクル管理ができないため、コネクションプールが溢れる恐れがある
 - 通常利用では debounce + SWR キャッシュにより 10req/min 程度に収まると想定
   - バーストリクエストは1段目で遮断
