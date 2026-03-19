@@ -252,7 +252,8 @@ sequenceDiagram
 - **client_id cookie による per-client rate limit バイパス対策**:
   - proxy が `client_id` cookie を JWS（HS256）で署名して発行。`CLIENT_ID_SIGNING_SECRET` 環境変数が署名鍵
   - cookie がないリクエスト（curl 等）は 425 を返し、cookie を発行する。cookie を自動送信しないクライアントはここで弾かれる
-  - cookie の署名検証に失敗（偽造）した場合は 500 を返す
+  - `curl -c/-b` で cookie を保存・送信すれば突破できるが、その場合は同一 UUID を使い回すことになるため per-client rate limit が正しく機能する
+  - cookie の署名検証に失敗（偽造）した場合は 500 を返す。毎回異なる UUID でバイパスするには `CLIENT_ID_SIGNING_SECRET` の漏洩が必要
   - `client_id` の管理は proxy 側に集約し、`x-client-id` ヘッダーとして Hono に渡す。Hono は cookie を一切知らない設計
 - **per-user + global の2層 Token Bucket**: ユーザーごとの公平性（per-user）と GitHub API quota の保護（global）を分離
   - per-user: `x-client-id` ヘッダー単位で1ユーザーの独占を防止
