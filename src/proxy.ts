@@ -106,6 +106,6 @@ const runnable = proxyProgram.pipe(
 
 export const proxy = Effect.runSync(runnable);
 
-export const proxyConfig = {
+export const config = {
   matcher: "/api/:path*",
 };
