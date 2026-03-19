@@ -29,19 +29,28 @@ export default async function RepoDetailPage({ params }: Props) {
       ),
       Effect.match({
         onSuccess: (data) => ({ ok: true as const, data }),
-        onFailure: (err) => ({ ok: false as const, error: err }),
+        onFailure: (err) => {
+          console.error("[RepoDetailPage] failed to fetch repo:", {
+            owner,
+            repo,
+            error: err,
+          });
+          return { ok: false as const, error: err };
+        },
       }),
     ),
   );
 
   if (!result.ok) {
+    const message =
+      result.error._tag === "RepoNotFoundError"
+        ? `${owner}/${repo} が見つかりませんでした`
+        : "エラーが発生しました。しばらく時間をおいてから再度お試しください。";
     return (
       <main className={styles.container}>
-        <p className={styles.notFound}>
-          {owner}/{repo} not found
-        </p>
+        <p className={styles.notFound}>{message}</p>
         <Link href="/search" className={styles.backLink}>
-          Back to search
+          検索に戻る
         </Link>
       </main>
     );

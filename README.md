@@ -239,6 +239,9 @@ Client → [1段目: Edge proxy] → [2段目: Hono ミドルウェア] → GitH
     - 1人が連打 → per-user で制限（global は余裕あり）
     - 3人が同時に 10req/min ずつ → global で合計 30req/min に制限
     - 多数のユーザーが同時利用 → global が先に枯渇し、全ユーザーに 429。1人が使い切ると他ユーザーも影響を受けるが、per-user があるため1人の独占は防止される
+- **per-user の限界**: Cookie ベースのため、curl 等のブラウザ以外のクライアントはリクエストのたびに新しい `client_id` が発行され、per-user 制限を回避できる
+  - HTTP の範囲でリクエストの発信元を判別する手段はなく、根本的な解決には認証が必要
+  - GitHub API quota の保護は global rate limit が担っており、最悪のケースはサイトの一時的な利用不可にとどまる（既知の制限）
 - GitHub Search API の `total_count` は実際のヒット数（数千万件）を返すが、取得可能なのは最大1000件
   - `GITHUB_SEARCH_MAX_RESULTS = 1000` で `total_pages` をキャップし、アクセス不可能なページへの遷移を防止
 
