@@ -192,6 +192,7 @@ SearchReposQuery       .main ← GitHub API      / .test ← モックデータ
 GetRepoByFullNameQuery .main ← GitHub API      / .test ← モックデータ
 DB                     .main ← Vercel Postgres / .test ← PGlite
 RateLimitConfigTag     .main ← 本番設定        / .test ← テスト設定
+InternalAuthConfigTag  .main ← 環境変数        / .test ← テスト用トークン
 ```
 
 - `NODE_ENV === "production"` で全レイヤーを一括切り替え
@@ -214,14 +215,14 @@ GitHub Search API 自体に rate limit がある（認証なし: 10req/min、認
 
 ```
 Client → [1段目: Edge proxy] → [2段目: Hono ミドルウェア] → GitHub API
-              IP制限                   Token Bucket
-            (インメモリ)             (Vercel Postgres)
+         IP制限 + ヘッダー注入    InternalAuth + Token Bucket
+           (インメモリ)               (Vercel Postgres)
 ```
 
 | | 1段目: Edge proxy | 2段目: Hono ミドルウェア |
 |---|---|---|
-| **目的** | バーストリクエストの遮断 | GitHub API の rate limit 保護 |
-| **方式** | IP ベース（30req/min） | Token bucket |
+| **目的** | バーストリクエストの遮断・ヘッダー注入 | API 直叩き防止・GitHub API rate limit 保護 |
+| **方式** | IP ベース（30req/min）+ `x-internal-token` / `x-client-id` 付与 | InternalAuth 検証 + Token bucket |
 | **実行環境** | Next.js 16 `proxy.ts`（API ルートのみ） | Node.js Runtime |
 | **ストレージ** | インメモリ | Vercel Postgres |
 | **ストレージ選定理由** | 要件的に厳密さより手軽さを優先しインメモリを採用 | 無料で Vercel コンソールから管理可能 |
@@ -232,16 +233,16 @@ Client → [1段目: Edge proxy] → [2段目: Hono ミドルウェア] → GitH
   - バーストリクエストは1段目で遮断
 - **Race Condition 対策**: 2段目の Token bucket は `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` で1つの SQL 文に集約
   - トークンの読み取り・計算・書き込みを原子的に実行し、同時リクエストによる race condition を防止
+- **InternalAuth（API 直叩き防止）**: proxy が環境変数 `INTERNAL_API_TOKEN` から取得したトークンを `x-internal-token` ヘッダーとして付与し、Hono 側で検証する
+  - proxy を経由しないリクエスト（curl 等）はトークンを持てないため 401 を返す
+  - `client_id` の管理も proxy 側に集約し、`x-client-id` ヘッダーとして Hono に渡す。Hono は cookie を一切知らない設計
 - **per-user + global の2層 Token Bucket**: ユーザーごとの公平性（per-user）と GitHub API quota の保護（global）を分離
-  - per-user: Cookie 単位で1ユーザーの独占を防止
+  - per-user: `x-client-id` ヘッダー単位で1ユーザーの独占を防止
   - global: `client_id = "global"` の共有行でサーバー全体のリクエスト数を制限し、GitHub API の rate limit（認証あり: 30req/min）内に収める
   - 想定ケース:
     - 1人が連打 → per-user で制限（global は余裕あり）
     - 3人が同時に 10req/min ずつ → global で合計 30req/min に制限
     - 多数のユーザーが同時利用 → global が先に枯渇し、全ユーザーに 429。1人が使い切ると他ユーザーも影響を受けるが、per-user があるため1人の独占は防止される
-- **per-user の限界**: Cookie ベースのため、curl 等のブラウザ以外のクライアントはリクエストのたびに新しい `client_id` が発行され、per-user 制限を回避できる
-  - HTTP の範囲でリクエストの発信元を判別する手段はなく、根本的な解決には認証が必要
-  - GitHub API quota の保護は global rate limit が担っており、最悪のケースはサイトの一時的な利用不可にとどまる（既知の制限）
 - GitHub Search API の `total_count` は実際のヒット数（数千万件）を返すが、取得可能なのは最大1000件
   - `GITHUB_SEARCH_MAX_RESULTS = 1000` で `total_pages` をキャップし、アクセス不可能なページへの遷移を防止
 

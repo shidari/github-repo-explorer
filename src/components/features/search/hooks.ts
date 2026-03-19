@@ -7,16 +7,18 @@ async function fetcher([, q, page]: [string, string, number]) {
   });
   if (!res.ok) {
     const error = await res.json();
-    // ミドルウェアが返す 429 の型を推論する方法が不明なため、手動でユニオンに追加
-    const unsafeStatus: typeof res.status | 429 = res.status;
-    const tag =
-      unsafeStatus === 404
-        ? ("notFound" as const)
-        : unsafeStatus === 400
-          ? ("validation" as const)
-          : unsafeStatus === 429
-            ? ("rateLimit" as const)
-            : ("unknown" as const);
+    const tag = (() => {
+      switch (res.status) {
+        case 404:
+          return "notFound" as const;
+        case 400:
+          return "validation" as const;
+        case 429:
+          return "rateLimit" as const;
+        default:
+          return "unknown" as const;
+      }
+    })();
     return { ok: false as const, tag, message: error.message };
   }
   const data = await res.json();
