@@ -1,6 +1,5 @@
 import { Context, Effect, Layer } from "effect";
 import type { MiddlewareHandler } from "hono";
-import { getCookie, setCookie } from "hono/cookie";
 import { sql } from "kysely";
 import { DB } from "@/infra/db";
 
@@ -53,16 +52,7 @@ export class RateLimitMiddleware extends Effect.Service<RateLimitMiddleware>()(
       // 本番の Vercel Postgres（マルチコネクション）でのみ効果がある。
       const middleware: MiddlewareHandler = async (c, next) => {
         try {
-          let clientId = getCookie(c, "client_id");
-          if (!clientId) {
-            clientId = crypto.randomUUID();
-            setCookie(c, "client_id", clientId, {
-              httpOnly: true,
-              secure: true,
-              sameSite: "Strict",
-              maxAge: 60 * 60 * 24 * 365,
-            });
-          }
+          const clientId = c.req.header("x-client-id") ?? crypto.randomUUID();
 
           // per-user: ユーザーごとの公平性
           const userResult = await db

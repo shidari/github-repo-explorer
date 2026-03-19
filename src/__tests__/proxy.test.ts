@@ -1,19 +1,26 @@
-import { Effect, Layer } from "effect";
+import { ConfigProvider, Effect, Layer } from "effect";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EdgeRateLimitConfigTag, middlewareProgram } from "@/proxy";
+import { EdgeRateLimitConfigTag, proxyProgram } from "@/proxy";
 
 function createTestMiddleware({
   windowMs,
   maxRequests,
+  internalToken = "",
 }: {
   windowMs: number;
   maxRequests: number;
+  internalToken?: string;
 }) {
   return Effect.runSync(
-    middlewareProgram.pipe(
+    proxyProgram.pipe(
       Effect.provide(
         Layer.succeed(EdgeRateLimitConfigTag, { windowMs, maxRequests }),
+      ),
+      Effect.withConfigProvider(
+        ConfigProvider.fromMap(
+          new Map([["INTERNAL_API_TOKEN", internalToken]]),
+        ),
       ),
     ),
   );
@@ -24,6 +31,65 @@ function createRequest({ ip, path }: { ip: string; path: string }) {
     headers: { "x-forwarded-for": ip },
   });
 }
+
+describe("x-internal-token 注入", () => {
+  it("INTERNAL_API_TOKEN が x-internal-token としてリクエストに付与される", () => {
+    const middleware = createTestMiddleware({
+      windowMs: 1_000,
+      maxRequests: 10,
+      internalToken: "test-secret",
+    });
+    const request = createRequest({
+      ip: "10.0.0.1",
+      path: "/api/search?q=react",
+    });
+
+    const response = middleware(request);
+    expect(response.headers.get("x-middleware-request-x-internal-token")).toBe(
+      "test-secret",
+    );
+  });
+});
+
+describe("x-client-id 注入", () => {
+  it("cookie に client_id があれば x-client-id にそのまま使う", () => {
+    const middleware = createTestMiddleware({
+      windowMs: 1_000,
+      maxRequests: 10,
+    });
+    const existingId = "existing-client-id";
+    const request = new NextRequest("http://localhost/api/search?q=react", {
+      headers: {
+        "x-forwarded-for": "10.0.0.1",
+        cookie: `client_id=${existingId}`,
+      },
+    });
+
+    const response = middleware(request);
+    expect(response.headers.get("x-middleware-request-x-client-id")).toBe(
+      existingId,
+    );
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("cookie に client_id がなければ新規発行して set-cookie にセットする", () => {
+    const middleware = createTestMiddleware({
+      windowMs: 1_000,
+      maxRequests: 10,
+    });
+    const request = createRequest({
+      ip: "10.0.0.1",
+      path: "/api/search?q=react",
+    });
+
+    const response = middleware(request);
+    const clientId = response.headers.get("x-middleware-request-x-client-id");
+    expect(clientId).toBeTruthy();
+    expect(response.headers.get("set-cookie")).toContain(
+      `client_id=${clientId}`,
+    );
+  });
+});
 
 describe("Edge rate limiter", () => {
   beforeEach(() => {
