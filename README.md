@@ -95,7 +95,7 @@ pnpm build         # プロダクションビルド
   - 動的メタデータ（`generateMetadata`）
   - エラーページ（`error.tsx`, `global-error.tsx`, `not-found.tsx`）
 
-#### 設計
+#### フロントエンド設計
 
 ##### 状態管理
 
@@ -111,26 +111,27 @@ pnpm build         # プロダクションビルド
   - URL state（searchParams / useSearchParams）は不採用
     - searchParams が変わると Page 自体が再レンダリングされるため、入力のたびにページ全体が再描画され、自動検索 UI とは相性が悪い
     - 検索画面を共有するユースケースも一般的でないと判断
-  - atom の getter/setter で状態間の依存関係を宣言的に記述
+  - atom の writer/reader で状態間の依存関係を宣言的に記述
     - `searchQueryAtom`: クエリ変更時にページを1にリセット + scroll 復元状態をクリア
     - `searchPageAtom`: ページ変更時に scroll 復元状態をクリア
     - `lastVisitedRepoAtom`: 詳細ページで full_name をセット。検索結果に戻ったときの scroll 復元に使用
 - **SWR**（サーバーステート）
   - Suspense が使える点と、クライアント側の server state キャッシュ管理を任せられる点から採用
     - Next.js と同じ Vercel 製でエコシステムを統一
+    - 今回の要件に絞るため `revalidateOnFocus` / `revalidateOnReconnect` は無効化（仕様の簡略化）
   - Suspense はレンダリング最適化（fallback 表示 + concurrent rendering によるチラつき防止）のために使用
     - API エラーは fetcher が Result 型（`{ ok: true, data } | { ok: false, error }`）を返すことでコンポーネント内でハンドリング
     - Error Boundary（`error.tsx`）はネットワーク断など fetch 自体の例外に対するフォールバック
-  - 今回の要件に絞るため `revalidateOnFocus` / `revalidateOnReconnect` は無効化（仕様の簡略化）
 
 ##### コンポーネント設計
 
-- **shadcn/ui** のデザインとコンポーネント設計をベースに、必要なコンポーネントを追加
+c のデザインとコンポーネント設計をベースに、必要なコンポーネントを追加
   - Radix UI や Tailwind CSS は今回の要件では必要のない依存と判断し、CSS Modules で直接実装
-  - 汎用 UI（`components/ui/`）と機能固有コンポーネント（`components/features/`）を分離
+- 汎用 UI（`components/ui/`）と機能固有コンポーネント（`components/features/`）を分離
+  - `next/image` による Image Optimization は `components/ui/` が Next.js に依存する形になるため見送り
 - **Storybook** でコンポーネントを個別に検証
   - page.tsx 経由での検証は非効率と判断
-  - カタログを先に作り、デザインと動きを検証してからページに組み込むプロセスで開発
+  - カタログを先に作り、デザインと動きを検証してからページに組み込むプロセスで開発できた
   - Play function によるインタラクションテスト含む
 
 ##### アクセシビリティ・デザイントークン
@@ -144,8 +145,7 @@ Vercel 公開のベストプラクティススキル（`web-design-guidelines`, 
   - セマンティクス: `<main>` ランドマーク、`lang="ja"`
 - **デザイントークン**: ハードコードされた26箇所の色を8つの CSS 変数に集約
   - テーマ変更時の影響範囲を限定
-- **スタイル方針**: CSS Modules を採用
-  - 必要のない依存を減らす目的
+  - CSS Modules を採用（必要のない依存を減らす目的）
   - inline style は原則使用せず module.css に切り出し
 
 ---
@@ -180,7 +180,7 @@ src/
   - `Tag` + `Layer` で抽象化し、本番（GitHub API）とテスト（モックデータ）をレイヤー切り替えで差し替え可能
   - エラーを API ごとに型付きで分類（`SearchApiUnexpectedError` / `ReposApiUnexpectedError`）
     - HTTP ステータスを `reason`（`rateLimit` / `validation` / `serviceUnavailable` / `unknown`）にマッピングし、上位層でのハンドリングを容易にした
-- **API Routes 層**: Client Component から叩かれるものだけを Hono の API として実装
+- **API Routes 層**: クライアントサイドから叩かれるものだけを Hono の API として実装
   - RSC で使うデータ取得は API を経由せず `repository/query` を直接呼び出す
   - OpenAPI スキーマの自動生成と Swagger UI を提供（開発環境のみ）
     - API の検証をフロントエンド経由で行うのは非効率と判断し、Swagger UI で手動検証
@@ -332,6 +332,6 @@ sequenceDiagram
   - Effect TS の採用、レイヤーベース DI、CSS Modules の選択など
   - UX を考慮した設計判断
 - **コードレビュー**: AI が書いたコードの意図と実装の整合性を確認
-  - CSS や汎用 UI はステートを持たず外部とやり取りしないため、レビューを軽めにした
+  - コアでなく容易に差し替え可能な末端部分（CSS・汎用 UI 等）はレビューを軽めにした
   - 全体を通して設計とレビューに最も時間を割いた
 - **提案の取捨選択**: AI のレビュー提案のうち、読みやすさやプロジェクト規模に合わないものを却下
