@@ -5,10 +5,6 @@ import { openAPIRouteHandler } from "hono-openapi";
 import { DB } from "@/infra/db";
 import { SearchReposQuery } from "@/repository/query";
 import {
-  InternalAuthConfigTag,
-  InternalAuthMiddleware,
-} from "./middleware/internal-auth";
-import {
   RateLimitConfigTag,
   RateLimitMiddleware,
 } from "./middleware/rate-limit";
@@ -18,11 +14,9 @@ import { SearchApp } from "./search";
 
 export const mainAppProgram = Effect.gen(function* () {
   const searchApp = yield* SearchApp;
-  const { middleware: internalAuthMiddleware } = yield* InternalAuthMiddleware;
   const { middleware: rateLimitMiddleware } = yield* RateLimitMiddleware;
 
   const app = new Hono()
-    .use(internalAuthMiddleware)
     .basePath("/api")
     .use(rateLimitMiddleware)
     .route("/search", searchApp);
@@ -52,12 +46,6 @@ export const mainAppProgram = Effect.gen(function* () {
 
 const runnable = mainAppProgram.pipe(
   Effect.provide(SearchApp.Default),
-  Effect.provide(InternalAuthMiddleware.Default),
-  Effect.provide(
-    process.env.NODE_ENV === "production"
-      ? InternalAuthConfigTag.main
-      : InternalAuthConfigTag.test,
-  ),
   Effect.provide(RateLimitMiddleware.Default),
   Effect.provide(RateLimitConfigTag.main),
   Effect.provide(process.env.NODE_ENV === "production" ? DB.main : DB.test),

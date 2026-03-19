@@ -2,10 +2,6 @@ import { Effect, Layer } from "effect";
 import { describe, expect, it, vi } from "vitest";
 import { mainAppProgram } from "@/app/api/_hono-app";
 import {
-  InternalAuthConfigTag,
-  InternalAuthMiddleware,
-} from "@/app/api/_hono-app/middleware/internal-auth";
-import {
   RateLimitConfigTag,
   RateLimitMiddleware,
 } from "@/app/api/_hono-app/middleware/rate-limit";
@@ -13,53 +9,11 @@ import { SearchApp } from "@/app/api/_hono-app/search";
 import { DB } from "@/infra/db";
 import { SearchReposQuery } from "@/repository/query";
 
-const WITH_AUTH = { "x-internal-token": "test-token" };
-
-describe("internal auth", () => {
-  it("x-internal-token ヘッダーなしのリクエストは 401 を返す", async () => {
-    const app = await Effect.runPromise(
-      mainAppProgram.pipe(
-        Effect.provide(SearchApp.Default),
-        Effect.provide(InternalAuthMiddleware.Default),
-        Effect.provide(InternalAuthConfigTag.test),
-        Effect.provide(RateLimitMiddleware.Default),
-        Effect.provide(RateLimitConfigTag.test),
-        Effect.provide(DB.test),
-        Effect.provide(SearchReposQuery.test),
-      ),
-    );
-
-    const res = await app.request("/api/search?q=react");
-    expect(res.status).toBe(401);
-  });
-
-  it("正しい x-internal-token ヘッダーがあれば 200 を返す", async () => {
-    const app = await Effect.runPromise(
-      mainAppProgram.pipe(
-        Effect.provide(SearchApp.Default),
-        Effect.provide(InternalAuthMiddleware.Default),
-        Effect.provide(InternalAuthConfigTag.test),
-        Effect.provide(RateLimitMiddleware.Default),
-        Effect.provide(RateLimitConfigTag.test),
-        Effect.provide(DB.test),
-        Effect.provide(SearchReposQuery.test),
-      ),
-    );
-
-    const res = await app.request("/api/search?q=react", {
-      headers: WITH_AUTH,
-    });
-    expect(res.status).toBe(200);
-  });
-});
-
 describe("rate limiter", () => {
   it("レートリミット内のリクエストは 200 を返す", async () => {
     const app = await Effect.runPromise(
       mainAppProgram.pipe(
         Effect.provide(SearchApp.Default),
-        Effect.provide(InternalAuthMiddleware.Default),
-        Effect.provide(InternalAuthConfigTag.test),
         Effect.provide(RateLimitMiddleware.Default),
         Effect.provide(
           Layer.succeed(RateLimitConfigTag, {
@@ -72,9 +26,7 @@ describe("rate limiter", () => {
       ),
     );
 
-    const res = await app.request("/api/search?q=react", {
-      headers: WITH_AUTH,
-    });
+    const res = await app.request("/api/search?q=react");
     expect(res.status).toBe(200);
   });
 
@@ -82,8 +34,6 @@ describe("rate limiter", () => {
     const app = await Effect.runPromise(
       mainAppProgram.pipe(
         Effect.provide(SearchApp.Default),
-        Effect.provide(InternalAuthMiddleware.Default),
-        Effect.provide(InternalAuthConfigTag.test),
         Effect.provide(RateLimitMiddleware.Default),
         Effect.provide(
           Layer.succeed(RateLimitConfigTag, {
@@ -97,7 +47,7 @@ describe("rate limiter", () => {
     );
 
     const clientId = crypto.randomUUID();
-    const headers = { ...WITH_AUTH, "x-client-id": clientId };
+    const headers = { "x-client-id": clientId };
 
     for (let i = 0; i < 3; i++) {
       const res = await app.request("/api/search?q=react", { headers });
@@ -112,8 +62,6 @@ describe("rate limiter", () => {
     const app = await Effect.runPromise(
       mainAppProgram.pipe(
         Effect.provide(SearchApp.Default),
-        Effect.provide(InternalAuthMiddleware.Default),
-        Effect.provide(InternalAuthConfigTag.test),
         Effect.provide(RateLimitMiddleware.Default),
         Effect.provide(
           Layer.succeed(RateLimitConfigTag, {
@@ -130,7 +78,7 @@ describe("rate limiter", () => {
     vi.setSystemTime(now);
 
     const clientId = crypto.randomUUID();
-    const headers = { ...WITH_AUTH, "x-client-id": clientId };
+    const headers = { "x-client-id": clientId };
 
     const first = await app.request("/api/search?q=react", { headers });
     expect(first.status).toBe(200);
@@ -154,8 +102,6 @@ describe("rate limiter", () => {
     const app = await Effect.runPromise(
       mainAppProgram.pipe(
         Effect.provide(SearchApp.Default),
-        Effect.provide(InternalAuthMiddleware.Default),
-        Effect.provide(InternalAuthConfigTag.test),
         Effect.provide(RateLimitMiddleware.Default),
         Effect.provide(
           Layer.succeed(RateLimitConfigTag, {
@@ -170,9 +116,7 @@ describe("rate limiter", () => {
 
     // 異なるユーザー（Cookie なし）から3リクエスト同時送信
     const results = await Promise.all(
-      Array.from({ length: 3 }, () =>
-        app.request("/api/search?q=react", { headers: WITH_AUTH }),
-      ),
+      Array.from({ length: 3 }, () => app.request("/api/search?q=react")),
     );
     const statuses = results.map((r) => r.status);
 
