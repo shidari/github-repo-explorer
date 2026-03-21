@@ -23,7 +23,7 @@ export class RateLimitConfigTag extends Context.Tag("RateLimitConfig")<
 >() {
   static readonly main = Layer.succeed(RateLimitConfigTag, {
     perUser: { maxTokens: 10, refillRate: 0.5 },
-    global: { maxTokens: 30, refillRate: 0.5 },
+    global: { maxTokens: 20, refillRate: 0.5 },
   });
 
   static readonly test = Layer.succeed(RateLimitConfigTag, {

@@ -20,7 +20,7 @@ export class EdgeRateLimitConfigTag extends Context.Tag("EdgeRateLimitConfig")<
 >() {
   static readonly main = Layer.succeed(EdgeRateLimitConfigTag, {
     windowMs: 60_000,
-    maxRequests: 30,
+    maxRequests: 20,
   });
 }
 
@@ -122,11 +122,11 @@ export const proxyProgram = Effect.gen(function* () {
       // IP ベースのバーストリクエストを遮断する。
       // NOTE: DB コネクションプールの枯渇を防ぐための IP ベース rate limit。
       // Edge が複数ノードで動作する場合、ノード間でカウントが共有されず不完全（未検証）。
-      // 分散攻撃を想定し、単一ノードでも厳しめに制約をかけている（30req/min）。
+      // 分散攻撃を想定し、単一ノードでも厳しめに制約をかけている（20req/min）。
       // 想定ケース:
       //   - 正当なユーザー: debounce + SWR キャッシュにより 10req/min 程度。問題なし
-      //   - 単一 IP からのバースト: 30req 超で 429。1 分後にリセット
-      //   - 複数ノードへの分散攻撃: 最悪 30 × ノード数が通過。Hono の token bucket が最終防御
+      //   - 単一 IP からのバースト: 20req 超で 429。1 分後にリセット
+      //   - 複数ノードへの分散攻撃: 最悪 20 × ノード数が通過。Hono の token bucket が最終防御
       // 完全な対策には Vercel KV（Redis）等の共有ストアが必要。
       const ip =
         request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ComponentProps } from "react";
+import { naturals } from "../../util";
 import styles from "./pagination.module.css";
 
 export type PaginationProps = ComponentProps<"nav"> & {
@@ -26,7 +27,7 @@ export function pageNumbers(
   total: number,
 ): (number | "...")[] {
   if (total <= 7) {
-    return Array.from({ length: total }, (_, i) => i + 1);
+    return naturals().drop(1).take(total).toArray();
   }
 
   const pages: (number | "...")[] = [1];
