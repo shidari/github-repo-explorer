@@ -62,42 +62,51 @@ pnpm build         # プロダクションビルド
 
 #### 検索
 
-- キーワードによるリポジトリ検索（debounce 付き自動検索）
+- 検索
+  - キーワード入力による自動検索（debounce 300ms でリクエスト抑制）
 - ページネーション
   - GitHub Search API の1000件制限に対応し、最大50ページにキャップ
   - 無限スクロールは GitHub REST API の仕様上複雑さが増すため不採用
-- 詳細ページから検索結果に戻ったとき、前回見ていたリポジトリにスクロール復元
+- スクロール復元
+  - 詳細ページから検索結果に戻ったとき、前回見ていたリポジトリの位置に自動スクロール
+  - Jotai atom + `data-repo` 属性 + `scrollIntoView` で実装
+  - Next.js 組み込みの scroll restoration が効かなかったため自前実装
 
 <a id="工夫した点こだわりポイント-機能フロントエンド"></a>
 
 <details open>
 <summary><strong>工夫した点・こだわりポイント</strong></summary>
 
-1. **Suspense を活用した debounce で UX を維持しながら API リクエスト回数を抑制**（`UnsafeSingletonDebounce`）
-   - Promise を throw して Suspense に suspend させることで、debounce 中は fallback を表示
-     - `useDeferredValue` は UX の最適化はできるが API リクエスト抑制には使えないと判断し、固定 300ms の debounce を採用
-     - デメリット: シングルトンで状態管理しており複数インスタンスの同時使用は不可（`clearTimeout` が競合）
-       - 複数コンポーネント対応（Map による管理等）も検討したが、現状1箇所のみのため制約を命名で明示して対処
-3. **検索結果とページネーションの Suspense 境界を分離し、不要な fallback（ページ移動時に両者が suspend する）をなくして UX を改善**
-4. SWR の preload による隣接ページの先読みを試みたが、Suspense との噛み合いが悪く断念
-5. ページネーション連打で rate limit に引っかかる問題あり。現状は UI 上のエラーメッセージ表示で対応（リクエスト中の disabled 化は要調査）
-6. **Jotai atom + `data-repo` 属性 + `scrollIntoView` でスクロール復元を自前実装**
+1. **Suspense を活用した debounce**
+   - Promise を throw して Suspense に suspend させ、debounce 中は fallback を表示
+   - `useDeferredValue` は UX 最適化のみで API リクエスト抑制には使えないと判断し、固定 300ms を採用
+   - デメリット: シングルトンのため複数インスタンスの同時使用は不可（`clearTimeout` が競合）
+     - 複数コンポーネント対応（Map 管理等）も検討したが、現状1箇所のみのため制約を命名で明示して対処
+2. **Suspense 境界の分離**
+   - 検索結果とページネーションの境界を分離し、ページ移動時にページネーション UI が消えないよう改善
+3. **スクロール復元の自前実装**
+   - Jotai atom + `data-repo` 属性 + `scrollIntoView` で実装
    - Next.js 組み込みの scroll restoration が効かなかったため
+4. **未解決の課題**
+   - SWR の preload による隣接ページの先読みを試みたが、Suspense との噛み合いが悪く断念
+   - ページネーション連打で rate limit に引っかかる問題あり。現状は UI 上のエラーメッセージ表示で対応（リクエスト中の disabled 化は要調査）
 
 </details>
 
 #### 詳細表示
 
-- リポジトリの詳細情報を表示
+- 詳細情報の表示
+  - リポジトリの README、スター数、言語などを表示
 
 <details open>
 <summary><strong>工夫した点・こだわりポイント</strong></summary>
 
-1. **RSC で直接データ取得 + `Link prefetch={true}` + RSC キャッシュ（10分）で詳細ページへの遷移を高速化**
-   - `page.tsx`（Server Component）でリポジトリクエリを直接実行。RSC にすることで prefetch が効き、不要な JS をクライアントに送らない
+1. **RSC + prefetch + キャッシュで遷移を高速化**
+   - `page.tsx`（Server Component）でリポジトリクエリを直接実行し、不要な JS をクライアントに送らない
+   - `Link prefetch={true}` で詳細ページを事前読み込み
    - リポジトリ情報が10分未満で更新されることは稀と判断し `revalidate = 600`
    - RSC による詳細取得は Rate Limit の対象外（GitHub API 直接）のため、キャッシュで呼び出しを抑制
-   - RSC キャッシュがサーバー上で共有されるため、prefetch によるリクエスト増加は GitHub API への負荷に直結しないと判断
+   - RSC キャッシュがサーバー上で共有されるため、prefetch が GitHub API 負荷に直結しないと判断
 
 </details>
 
@@ -106,8 +115,10 @@ pnpm build         # プロダクションビルド
 <details open>
 <summary><strong>工夫した点・こだわりポイント</strong></summary>
 
-1. **OGP 対応のため動的メタデータ（`generateMetadata`）を生成**
-2. **エラー・Not Found 時に専用ページを表示し、ユーザーが行き止まりにならないよう配慮**（`error.tsx`, `global-error.tsx`, `not-found.tsx`）
+1. **動的メタデータ**
+   - `generateMetadata` で OGP 対応のメタデータを生成
+2. **エラー・Not Found ページ**
+   - `error.tsx`, `global-error.tsx`, `not-found.tsx` でユーザーが行き止まりにならないよう配慮
 
 </details>
 
@@ -125,13 +136,15 @@ pnpm build         # プロダクションビルド
 <details open>
 <summary><strong>工夫した点・こだわりポイント</strong></summary>
 
-1. **依存の切り替え・型付きエラーハンドリングのために Effect TS を採用**
+1. **Effect TS の採用**
    - 結果・エラー・依存を型で表現し、エラーをパターンマッチできるためハンドリングの漏れを防止
-2. **クライアントから叩かれるものだけを Hono の API として実装し、RSC は `repository/query` を直接呼び出すことで不要なネットワークラウンドトリップを排除**
-3. **API の検証をフロントエンド経由で行うのは非効率と判断し、Swagger UI で手動検証**
+2. **RSC と API Routes の使い分け**
+   - クライアントから叩かれるものだけを Hono の API として実装し、RSC は `repository/query` を直接呼び出すことで不要なラウンドトリップを排除
+3. **Swagger UI で API を直接検証**
+   - フロントエンド経由での検証は非効率と判断
 4. **JWS cookie チャレンジ + Token Bucket で負荷対策と公平性を確保**
-
-   GitHub Search API 自体に rate limit がある（認証なし: 10req/min、認証あり: 30req/min）。Token Bucket で全体の負荷を抑えつつ、per-user 制限で1人が使い切って他ユーザーが使えなくなることを防止。
+   - GitHub Search API 自体に rate limit がある（認証なし: 10req/min、認証あり: 30req/min）
+   - Token Bucket で全体の負荷を抑えつつ、per-user 制限で1人が使い切って他ユーザーが使えなくなることを防止
 
    ```mermaid
    sequenceDiagram
@@ -176,22 +189,21 @@ pnpm build         # プロダクションビルド
 <details open>
 <summary><strong>工夫した点・こだわりポイント</strong></summary>
 
-1. **Jotai でセッション情報に近いものを管理し、複雑さを軽減**
-   - セッション情報に近い情報の管理として採用
-   - 当初は session storage を検討したが、hydration の問題が発生したためインメモリ state に切り替え（要検証）
-   - URL state（searchParams / useSearchParams）は不採用
-     - `searchParams` は Page の再レンダリングを引き起こす可能性があり、自動検索 UI とは相性が悪いと判断（要検証）
-     - `useSearchParams` なら再レンダリング問題は回避できそうだが、検索状態を URL で管理する必然性が薄い（検索画面を共有するユースケースも一般的でない）
-     - Jotai の atom で依存関係を宣言的に記述する方が見通しが良いと判断
-   - atom の writer/reader で状態間の依存関係を宣言的に記述
+1. **Jotai でセッション情報に近い状態を管理**
+   - 当初は session storage を検討したが、hydration の問題が発生したためインメモリに切り替え（要検証）
+   - URL state は不採用
+     - `searchParams` は Page の再レンダリングを引き起こす可能性があり、自動検索 UI と相性が悪いと判断（要検証）
+     - `useSearchParams` なら回避できそうだが、検索状態を URL で管理する必然性が薄い
+     - Jotai の atom で依存関係を宣言的に記述する方が見通しが良い
+   - atom の writer/reader で状態間の依存関係を記述
      - `searchQueryAtom`: クエリ変更時にページを1にリセット + scroll 復元状態をクリア
      - `searchPageAtom`: ページ変更時に scroll 復元状態をクリア
-     - `lastVisitedRepoAtom`: 詳細ページで full_name をセット。検索結果に戻ったときの scroll 復元に使用
-2. **SWR で Suspense 対応のキャッシュ・再取得管理を委譲**
-   - Suspense が使える点と、クライアント側の server state キャッシュ管理を任せられる点から採用
-     - Next.js と同じ Vercel 製でエコシステムを統一
-     - 今回の要件に絞るため `revalidateOnFocus` / `revalidateOnReconnect` は無効化（仕様の簡略化）
-   - Suspense はレンダリングのサスペンドにより不要なレンダリングやレンダリング結果の不整合をなくし、表示を最適化するために使用
+     - `lastVisitedRepoAtom`: 詳細ページで full_name をセット
+2. **SWR で Suspense 対応のキャッシュ管理を委譲**
+   - Suspense が使える点と、server state のキャッシュ管理を任せられる点から採用
+   - Next.js と同じ Vercel 製でエコシステムを統一
+   - `revalidateOnFocus` / `revalidateOnReconnect` は無効化（仕様の簡略化）
+   - Suspense で不要なレンダリングやレンダリング結果の不整合をなくし表示を最適化
 
 </details>
 
@@ -206,11 +218,12 @@ pnpm build         # プロダクションビルド
 <details open>
 <summary><strong>工夫した点・こだわりポイント</strong></summary>
 
-1. **shadcn/ui ベースだが Radix UI / Tailwind CSS を外し CSS Modules で直接実装**
-   - 今回の要件では不要な依存と判断
-2. **Storybook でコンポーネントの検証だけを行えるようにした**
-   - page.tsx での確認だと他の要因が絡んでくるため、コンポーネント単体で検証できる環境が必要と判断
-   - カタログを先に作り、デザインと動きを検証してからページに組み込むプロセスで開発できた
+1. **不要な依存を排除**
+   - shadcn/ui ベースだが Radix UI / Tailwind CSS を外し、CSS Modules で直接実装
+   - 今回の要件ではこれで十分と判断
+2. **Storybook でコンポーネント単体検証**
+   - page.tsx だと他の要因が絡むため、コンポーネントの検証だけを行える環境が必要と判断
+   - カタログを先に作り、デザインと動きを検証してからページに組み込むプロセスで開発
 
 </details>
 
@@ -232,7 +245,7 @@ Vercel 公開のベストプラクティススキル（`web-design-guidelines`, 
 
 ### API Layer 設計
 
-#### アーキテクチャ（DDD + Layered Architecture）
+#### アーキテクチャ（クリーンアーキテクチャに影響を受けたレイヤー分離）
 
 ```
 src/
@@ -260,12 +273,16 @@ src/
 <details open>
 <summary><strong>工夫した点・こだわりポイント</strong></summary>
 
-1. **Command パターンによる Repository カプセル化**
-   - AWS SDK v3 に着想し、操作単位にクラス化。Repository パターンのインターフェース肥大化を回避
-3. **エラーの reason マッピング**: HTTP ステータスを `rateLimit` / `validation` / `serviceUnavailable` / `unknown` にマッピングし、上位層でのハンドリングを容易化
-4. **hono-trpc でクライアントからの API 呼び出しも型安全に**
-5. **OpenAPI スキーマの自動生成と Swagger UI を提供（開発環境のみ）**
-   - API の検証をフロントエンド経由で行うのは非効率と判断し、Swagger UI で手動検証
+1. **Command パターンで Repository をカプセル化**
+   - AWS SDK v3 に着想し、操作単位にクラス化
+   - Repository パターンのインターフェース肥大化を回避
+2. **エラーの reason マッピング**
+   - HTTP ステータスを `rateLimit` / `validation` / `serviceUnavailable` / `unknown` にマッピング
+   - 上位層でのハンドリングを容易化
+3. **hono-trpc で型安全な API 呼び出し**
+   - クライアントからの API 呼び出しにも型が効く
+4. **Swagger UI で API を直接検証**
+   - フロントエンド経由での検証は非効率と判断（開発環境のみ）
 
 </details>
 
@@ -281,10 +298,11 @@ RateLimitConfigTag     .main ← 本番設定        / .test ← テスト設定
 <details open>
 <summary><strong>工夫した点・こだわりポイント</strong></summary>
 
-1. **Effect の `Tag` + `Layer` でインターフェースを抽象化し、`NODE_ENV` だけで本番とテストの実装を一括切り替え可能にした**
-   - テスト時は GitHub API・外部 DB に依存せず動作（シード固定のモックデータ + インメモリ DB（PGlite）、Rate limit 閾値もテスト用に差し替え）
-   - インターフェースを事前定義し、開発初期は部分的にモックを使いながら開発。GitHub API を極力叩かず rate limit を消費しない安全な開発フロー
-   - モックデータはそのまま E2E テストにも流用
+1. **`NODE_ENV` だけで本番とテストの実装を一括切り替え**
+   - Effect の `Tag` + `Layer` でインターフェースを抽象化
+   - テスト時は GitHub API・外部 DB に依存せず動作（シード固定モック + PGlite）
+   - 開発初期はモックで開発し、GitHub API の rate limit を消費しない安全なフロー
+   - モックデータは E2E テストにもそのまま流用
 
 </details>
 
@@ -297,7 +315,7 @@ RateLimitConfigTag     .main ← 本番設定        / .test ← テスト設定
 <details open>
 <summary><strong>工夫した点・こだわりポイント</strong></summary>
 
-1. **`.ts` ファイル内に `sql` タグで SQL を記述**
+1. **SQL を `.ts` ファイル内に `sql` タグで記述**
    - Vercel serverless 環境で `fs` が使えない可能性があるため、静的 import で解決（要検証）
 
 </details>
@@ -314,13 +332,14 @@ RateLimitConfigTag     .main ← 本番設定        / .test ← テスト設定
 <details open>
 <summary><strong>工夫した点・こだわりポイント</strong></summary>
 
-1. **client_id cookie（JWS 署名）による per-client rate limit バイパス対策**
-   - proxy が `client_id` cookie を JWS（HS256）で署名して発行。`CLIENT_ID_SIGNING_SECRET` 環境変数が署名鍵
-   - cookie がないリクエスト（curl 等）は 425 を返し、cookie を発行。cookie を自動送信しないクライアントはここで弾かれる
-     - `curl -c/-b` で cookie を保存・送信すれば突破できるが、その場合は同一 UUID を使い回すことになるため per-client rate limit が正しく機能する
-   - cookie の署名検証に失敗（偽造）した場合は 500 を返す。毎回異なる UUID でバイパスするには `CLIENT_ID_SIGNING_SECRET` の漏洩が必要
-   - `client_id` の管理は proxy 側に集約し、`x-client-id` ヘッダーとして Hono に渡す。Hono は cookie を一切知らない設計
-2. **per-user + global の2層 Token Bucket**: ユーザーごとの公平性（per-user）と GitHub API quota の保護（global）を分離
+1. **JWS 署名 cookie で per-client rate limit のバイパスを防止**
+   - proxy が `client_id` cookie を JWS（HS256）で署名して発行
+   - cookie なし（curl 等）は 425 で弾く。cookie を自動送信しないクライアントはここで遮断
+     - `curl -c/-b` で突破できるが、同一 UUID を使い回すため per-client rate limit が機能する
+   - 署名検証に失敗（偽造）は 500。毎回異なる UUID でのバイパスには署名鍵の漏洩が必要
+   - cookie 管理は proxy に集約し、`x-client-id` ヘッダーで Hono に渡す。Hono は cookie を知らない設計
+2. **per-user + global の2層 Token Bucket**
+   - ユーザーごとの公平性（per-user）と GitHub API quota の保護（global）を分離
    - per-user: `x-client-id` ヘッダー単位で1ユーザーの独占を防止
    - global: `client_id = "global"` の共有行でサーバー全体のリクエスト数を制限し、GitHub API の rate limit（認証あり: 30req/min）に対して安全マージンを持たせて 20req/min に設定
    - 想定ケース:
