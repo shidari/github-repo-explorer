@@ -84,13 +84,11 @@ class PGliteDialect implements Dialect {
 
 // ── DB Layer ──
 // NOTE: DB 接続の lifecycle（destroy）は管理していない。
-// Next.js の API Routes からサーバーの起動・終了を制御する方法が
-// 現状見つかっておらず、acquireRelease のスコープを合わせられないため。
-// Vercel (serverless) ではプロセスが短命のため、現状は問題ないと判断。
-// コネクションプールの枯渇対策として Edge Middleware（middleware.ts）で
-// IP ベースの rate limit を実装しているが、Edge が複数ノードで動作するため
-// ノード間でカウントが共有されず、分散環境では不完全（要調査）。
-// 完全な対策には Vercel KV（Redis）等の共有ストアが必要。
+// Layer.effect は Effect の Layer メモ化により1回だけ評価されるため、
+// コネクションプールは起動時に1つ作られ、全リクエストで使い回される。
+// プールの上限を超えたリクエストは待ち行列に入るため、コネクション枯渇は起きない。
+// Vercel (serverless) ではプロセスが短命なため、destroy はプロセス終了時の
+// OS によるソケット回収に任せている。
 
 const migrationProvider: MigrationProvider = {
   async getMigrations(): Promise<Record<string, Migration>> {
