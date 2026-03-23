@@ -218,9 +218,8 @@ pnpm build         # プロダクションビルド
 <details open>
 <summary><strong>工夫した点・こだわりポイント</strong></summary>
 
-1. **不要な依存を排除**
-   - shadcn/ui ベースだが Radix UI / Tailwind CSS を外し、CSS Modules で直接実装
-   - 今回の要件ではこれで十分と判断
+1. **shadcn/ui の依存をそのまま引き継がない**
+   - shadcn/ui は Radix UI + Tailwind CSS に依存しているが、なるべく依存は少ない方向にしたいためコンポーネントは直書き、CSS は CSS Modules を採用
 2. **Storybook でコンポーネント単体検証**
    - page.tsx だと他の要因が絡むため、コンポーネントの検証だけを行える環境が必要と判断
    - カタログを先に作り、デザインと動きを検証してからページに組み込むプロセスで開発
@@ -273,12 +272,10 @@ src/
 <details open>
 <summary><strong>工夫した点・こだわりポイント</strong></summary>
 
-1. **Command パターンで Repository をカプセル化**
-   - AWS SDK v3 に着想し、操作単位にクラス化
-   - Repository パターンのインターフェース肥大化を回避
-2. **エラーの reason マッピング**
-   - HTTP ステータスを `rateLimit` / `validation` / `serviceUnavailable` / `unknown` にマッピング
-   - 上位層でのハンドリングを容易化
+1. **Effect TS とクリーンアーキテクチャを組み合わせ、依存の方向を内側に限定**
+   - Effect Schema でバリデーションと型推論を一元化し、DTO で各レイヤーの責務を明示
+   - Command パターン（AWS SDK v3 に着想）で Repository を操作単位にカプセル化し、インターフェース肥大化を回避
+   - エラーを `rateLimit` / `validation` / `serviceUnavailable` / `unknown` に reason マッピングし、上位層でのハンドリングを容易化
 3. **hono-trpc で型安全な API 呼び出し**
    - クライアントからの API 呼び出しにも型が効く
 4. **Swagger UI で API を直接検証**
@@ -298,8 +295,7 @@ RateLimitConfigTag     .main ← 本番設定        / .test ← テスト設定
 <details open>
 <summary><strong>工夫した点・こだわりポイント</strong></summary>
 
-1. **`NODE_ENV` だけで本番とテストの実装を一括切り替え**
-   - Effect の `Tag` + `Layer` でインターフェースを抽象化
+1. **Effect の Layer を活用して、環境変数で依存を一括切り替え**
    - テスト時は GitHub API・外部 DB に依存せず動作（シード固定モック + PGlite）
    - 開発初期はモックで開発し、GitHub API の rate limit を消費しない安全なフロー
    - モックデータは E2E テストにもそのまま流用
