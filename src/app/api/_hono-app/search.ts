@@ -121,18 +121,17 @@ export class SearchApp extends Effect.Service<SearchApp>()("SearchApp", {
             .runAction({ query: q, page, perPage: PER_PAGE })
             .pipe(
               Effect.match({
-                onSuccess: (data) =>
-                  c.json(
-                    {
-                      ...data,
-                      page,
-                      total_pages: Math.ceil(
-                        Math.min(data.total_count, GITHUB_SEARCH_MAX_RESULTS) /
-                          PER_PAGE,
-                      ),
-                    },
+                onSuccess: (data) => {
+                  const clampedTotal = Math.min(
+                    data.total_count,
+                    GITHUB_SEARCH_MAX_RESULTS,
+                  );
+                  const totalPages = Math.ceil(clampedTotal / PER_PAGE);
+                  return c.json(
+                    { ...data, page, total_pages: totalPages },
                     200,
-                  ),
+                  );
+                },
                 onFailure: (err) => {
                   switch (err._tag) {
                     case "SearchNoResultError":
@@ -156,7 +155,6 @@ export class SearchApp extends Effect.Service<SearchApp>()("SearchApp", {
                         default:
                           return c.json({ message: err.message }, 500);
                       }
-                    // eslint-disable-next-line no-fallthrough
                     default:
                       return err satisfies never;
                   }

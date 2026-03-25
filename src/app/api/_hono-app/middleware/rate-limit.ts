@@ -41,19 +41,12 @@ export class RateLimitMiddleware extends Effect.Service<RateLimitMiddleware>()(
       const { db } = yield* DB;
       const config = yield* RateLimitConfigTag;
 
-      // INSERT ... ON CONFLICT DO UPDATE ... RETURNING で
-      // READ → COMPUTE → WRITE を1つの SQL 文にまとめ、Race Condition を防ぐ。
-      //
-      // per-user 成功後に global で DB エラーが発生した場合、
-      // per-user のトークンが1つ消費されたままになる（リクエストは通らないので実害なし）。
-      //
-      // NOTE: テスト環境の PGlite は内部 mutex で全クエリを直列化するため、
-      // 並行アクセスによる Race Condition の再現テストは不可能。
-      // 本番の Vercel Postgres（マルチコネクション）でのみ効果がある。
       const middleware: MiddlewareHandler = async (c, next) => {
         try {
           const clientId = c.req.header("x-client-id") ?? crypto.randomUUID();
 
+          // per-user と global のチェックは別クエリのため、間に別リクエストが割り込む
+          // race condition がある。厳密な整合性より低コストな実装を優先している。
           // per-user: ユーザーごとの公平性
           const userResult = await db
             .insertInto("token_buckets")

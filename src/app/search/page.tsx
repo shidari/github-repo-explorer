@@ -2,7 +2,7 @@
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import Link from "next/link";
-import { Fragment, Suspense, useEffect } from "react";
+import { Fragment, Suspense } from "react";
 import {
   lastVisitedRepoAtom,
   searchPageAtom,
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/item";
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRestoreRepoScrollPositionEffect } from "./hooks";
 import styles from "./page.module.css";
 
 const DEBOUNCE_MS = 300;
@@ -116,26 +117,14 @@ function RepositoryList({ query, page }: { query: string; page: number }) {
   const { data: result } = useSWRSuspenseSearchPageResult(query, page);
   const lastVisited = useAtomValue(lastVisitedRepoAtom);
 
-  // マウント時に最後に訪問したリポジトリにスクロール
-  useEffect(() => {
-    if (lastVisited) {
-      // HACK: 詳細ページの「Back to search」リンクと検索欄の位置が重なるため、
-      // 戻った際に検索欄にフォーカスが移り scrollIntoView が無効化される。
-      // 暫定的に blur で回避する。一瞬ちらつきが発生する副作用あり。
-      if (document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
-      }
-      const el = document.querySelector(`[data-repo="${lastVisited}"]`);
-      el?.scrollIntoView({ block: "center" });
-    }
-  }, [lastVisited]);
+  useRestoreRepoScrollPositionEffect(lastVisited);
 
   if (!result.ok) {
     return (
       <div className={styles.empty}>
         <p className={styles.emptyTitle}>
           {result.tag === "notFound"
-            ? "No results found"
+            ? "検索結果が見つかりませんでした"
             : result.tag === "rateLimit"
               ? "リクエスト回数の上限に達しました。しばらく時間をおいてお試しください。"
               : result.tag === "validation"

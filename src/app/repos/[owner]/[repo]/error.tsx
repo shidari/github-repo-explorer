@@ -12,13 +12,13 @@ export default function RepoDetailError({
 }) {
   return (
     <main className={styles.container}>
-      <p className={styles.notFound}>Something went wrong</p>
+      <p className={styles.notFound}>エラーが発生しました</p>
       <p>{error.message}</p>
       <button type="button" onClick={reset}>
-        Try again
+        再試行
       </button>
       <Link href="/search" className={styles.backLink}>
-        Back to search
+        検索に戻る
       </Link>
     </main>
   );

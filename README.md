@@ -70,7 +70,6 @@ pnpm build         # プロダクションビルド
   - 無限スクロールは GitHub REST API の仕様上複雑さが増すため不採用
 - スクロール復元
   - 詳細ページから検索結果に戻ったとき、前回見ていたリポジトリの位置に自動スクロール
-  - Next.js 組み込みの scroll restoration が効かなかったため自前実装
 
 <a id="工夫した点こだわりポイント-機能フロントエンド"></a>
 
@@ -85,7 +84,7 @@ pnpm build         # プロダクションビルド
    - ページ移動時にページネーション UI が消えないよう改善
 3. **スクロール復元の自前実装**
    - Jotai atom + `data-repo` 属性 + `scrollIntoView` で実装
-   - Next.js 組み込みの scroll restoration が効かなかったため
+     - Next.js 組み込みの scroll restoration が効かなかったため
 
 </details>
 
@@ -126,11 +125,10 @@ pnpm build         # プロダクションビルド
 ### バックエンド
 
 - proxy
-  - JWS cookie チャレンジによる非ブラウザクライアントの遮断
+  - JWS cookie チャレンジ
 - API Routes（Hono）
   - GitHub Search API をラップしたリポジトリ検索エンドポイント
-  - OpenAPI スキーマの自動生成と Swagger UI（開発環境のみ）
-  - Token Bucket Rate Limit（per-user + global）
+  - Token Bucket Rate Limit
 - RSC
   - `repository/query` を直接呼び出す詳細取得（API Routes を経由しない）
 
@@ -142,7 +140,7 @@ pnpm build         # プロダクションビルド
 1. **Effect TS の採用**
    - 結果・エラー・依存を型で表現し、エラーをパターンマッチできるためハンドリングの漏れを防止
 2. **Swagger UI で API を直接検証**
-   - フロントエンド経由での検証は非効率と判断
+   - ローカルでの開発の効率化
 4. **JWS cookie チャレンジ + Token Bucket で負荷対策と公平性を確保**
    - Token Bucket で全体の負荷を抑えつつ、per-user 制限で1人が使い切って他ユーザーが使えなくなることを防止
      - GitHub Search API 自体に rate limit がある（認証なし: 10req/min、認証あり: 30req/min）
@@ -191,14 +189,14 @@ pnpm build         # プロダクションビルド
 <summary><strong>工夫した点・こだわりポイント</strong></summary>
 
 1. **Jotai でセッション情報に近い状態を管理**
-   - 当初は session storage を検討したが、hydration の問題が発生したためインメモリに切り替え（要検証）
    - atom の writer/reader で状態間の依存関係を宣言的に記述
      - `searchQueryAtom`: クエリ変更時にページを1にリセット + scroll 復元状態をクリア
      - `searchPageAtom`: ページ変更時に scroll 復元状態をクリア
      - `lastVisitedRepoAtom`: 詳細ページで full_name をセット
-   - URL state は不採用
-     - `searchParams` は Page の再レンダリングを引き起こす可能性があり、自動検索 UI と相性が悪いと判断（要検証）
-     - `useSearchParams` なら回避できそうだが、検索状態を URL で管理する必然性が薄い
+     - URL state は不採用
+       - `searchParams` は Page の再レンダリングを引き起こす可能性があり、自動検索 UI と相性が悪いと判断（要検証）
+       - `useSearchParams` なら回避できそうだが、検索状態を URL で管理する必然性が薄い
+     - 当初は session storage を検討したが、hydration の問題が発生したためインメモリに切り替え（要検証）
 2. **SWR で Suspense 対応のキャッシュ管理を委譲**
    - TanStack Query も検討したが、Next.js と同じ Vercel 製で軽量な SWR を選択
    - `revalidateOnFocus` / `revalidateOnReconnect` は無効化（仕様の簡略化）
@@ -214,9 +212,9 @@ pnpm build         # プロダクションビルド
 
 1. **shadcn/ui の依存をそのまま引き継がない**
    - shadcn/ui のデザインとコンポーネント設計をベースにしつつ、Radix UI + Tailwind CSS には依存せずコンポーネントは直書き、CSS は CSS Modules を採用
-   - `next/image` による Image Optimization は `components/ui/` が Next.js に依存する形になるため見送り
+     - `next/image` による Image Optimization は `components/ui/` が Next.js に依存する形になるため見送り
 2. **Storybook でコンポーネント単体検証**
-   - page.tsx だと他の要因が絡むため、コンポーネントの検証だけを行える環境が必要と判断
+   - コンポーネント単体で状態パターンを確認できる環境を確保
    - カタログを先に作り、デザインと動きを検証してからページに組み込むプロセスで開発
 
 </details>
@@ -267,63 +265,37 @@ src/
 
 1. **Effect TS とクリーンアーキテクチャを組み合わせ、依存の方向を内側に限定**
    - Effect Schema でバリデーションと型推論を一元化し、DTO で各レイヤーの責務を明示
+   - Effect の Layer によりレイヤー単位の DI が簡単に行え、テストしやすい構造を実現
+   - 環境変数でレイヤーを一括切り替え（テスト時は GitHub API・外部 DB に依存せず動作）
+   - 開発初期はモックで開発し、GitHub API の rate limit を消費しない安全なフロー
+   - モックデータは E2E テストにもそのまま流用
+
+   ```
+   SearchReposQuery       .main ← GitHub API      / .test ← モックデータ
+   GetRepoByFullNameQuery .main ← GitHub API      / .test ← モックデータ
+   DB                     .main ← Vercel Postgres / .test ← PGlite
+   RateLimitConfigTag     .main ← 本番設定        / .test ← テスト設定
+   ```
+
 2. **Command パターン（AWS SDK v3 に着想）で Repository を操作単位にカプセル化**
    - 今回の規模ではインターフェース肥大化は起きないが、スケール時を意識した設計
 3. **hono-trpc で型安全な API 呼び出し**
    - クライアントからの API 呼び出しにも型が効く
 4. **Swagger UI で API を直接検証**
-   - フロントエンド経由での検証は非効率と判断（開発環境のみ）
-
-</details>
-
-#### レイヤーベース DI
-
-```
-SearchReposQuery       .main ← GitHub API      / .test ← モックデータ
-GetRepoByFullNameQuery .main ← GitHub API      / .test ← モックデータ
-DB                     .main ← Vercel Postgres / .test ← PGlite
-RateLimitConfigTag     .main ← 本番設定        / .test ← テスト設定
-```
-
-<details open>
-<summary><strong>工夫した点・こだわりポイント</strong></summary>
-
-1. **環境変数でレイヤーを一括切り替え**
-   - テスト時は GitHub API・外部 DB に依存せず動作（シード固定モック + PGlite）
-   - 開発初期はモックで開発し、GitHub API の rate limit を消費しない安全なフロー
-   - モックデータは E2E テストにもそのまま流用
-
-</details>
-
-#### マイグレーション
-
-- Kysely の [Migrator](https://kysely.dev/docs/migrations) でファイルベースのスキーマ管理
-  - `up()` / `down()` 関数でロールバック可能
-  - 実行済みマイグレーションは `kysely_migration` テーブルで管理し、未実行分のみ適用
-
-<details open>
-<summary><strong>工夫した点・こだわりポイント</strong></summary>
-
-1. **SQL を `.ts` ファイル内に `sql` タグで記述**
+   - ローカルでの API 検証を効率化（開発環境のみ）
+5. **マイグレーションの SQL を `.ts` ファイル内に `sql` タグで記述**
    - Vercel serverless 環境で `fs` が使えない可能性があるため、静的 import で解決（要検証）
-
-</details>
-
-#### Rate Limit
-
-| | proxy（JWS cookie チャレンジ） | Hono ミドルウェア（Token Bucket） |
-|---|---|---|
-| **目的** | client_id 発行・非ブラウザクライアントの遮断 | GitHub API rate limit 保護 |
-| **方式** | JWS 署名 cookie 発行・検証 + `x-client-id` 付与 | Token bucket（per-user + global） |
-| **実行環境** | Next.js 16 `proxy.ts`（API ルートのみ） | Node.js Runtime |
-| **ストレージ** | なし（ステートレス） | Vercel Postgres |
-
-<details open>
-<summary><strong>工夫した点・こだわりポイント</strong></summary>
-
-1. **JWS 署名 cookie で per-client rate limit のバイパスを防止**
+6. **JWS 署名 cookie で per-client rate limit のバイパスを防止**
    - cookie なし（curl 等）は 425 で遮断。`curl -c/-b` で突破できるが、同一 UUID を使い回すため per-client rate limit が機能する
-2. **per-user + global の2層 Token Bucket**
+
+   | | proxy（JWS cookie チャレンジ） | Hono ミドルウェア（Token Bucket） |
+   |---|---|---|
+   | **目的** | client_id 発行・非ブラウザクライアントの遮断 | GitHub API rate limit 保護 |
+   | **方式** | JWS 署名 cookie 発行・検証 + `x-client-id` 付与 | Token bucket（per-user + global） |
+   | **実行環境** | Next.js 16 `proxy.ts`（API ルートのみ） | Node.js Runtime |
+   | **ストレージ** | なし（ステートレス） | Vercel Postgres |
+
+7. **per-user + global の2層 Token Bucket**
    - ユーザーごとの公平性（per-user）と GitHub API quota の保護（global）を分離
    - per-user: `x-client-id` ヘッダー単位で1ユーザーの独占を防止
    - global: `client_id = "global"` の共有行でサーバー全体のリクエスト数を制限し、GitHub API の rate limit（認証あり: 30req/min）に対して安全マージンを持たせて 20req/min に設定
@@ -331,7 +303,7 @@ RateLimitConfigTag     .main ← 本番設定        / .test ← テスト設定
      - 1人が連打 → per-user で制限（global は余裕あり）
      - 3人が同時に 10req/min ずつ → global で合計 20req/min に制限
      - 多数のユーザーが同時利用 → global が先に枯渇し、全ユーザーに 429。1人が使い切ると他ユーザーも影響を受けるが、per-user があるため1人の独占は防止される
-3. **Race Condition 対策**: Token bucket は `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` で1つの SQL 文に集約
+8. **Race Condition 対策**: Token bucket は `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` で1つの SQL 文に集約
    - トークンの読み取り・計算・書き込みを原子的に実行し、同時リクエストによる race condition を防止
 
 </details>
@@ -412,7 +384,7 @@ RateLimitConfigTag     .main ← 本番設定        / .test ← テスト設定
 - **設計**: アーキテクチャ全般の意思決定
   - Effect TS の採用、レイヤーベース DI、CSS Modules の選択など
   - UX を考慮した設計判断
-- **コードレビュー**: AI が書いたコードの意図と実装の整合性を確認
+- **コードレビュー**: コアな部分を重点的に確認し、余裕があれば細部も見る方針
   - コアでなく容易に差し替え可能な末端部分（CSS・汎用 UI 等）はレビューを軽めにした
   - 全体を通して設計とレビューに最も時間を割いた
 - **提案の取捨選択**: AI のレビュー提案のうち、読みやすさやプロジェクト規模に合わないものを却下
