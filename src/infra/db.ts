@@ -86,8 +86,7 @@ class PGliteDialect implements Dialect {
 // NOTE: DB 接続の lifecycle（destroy）は管理していない。
 // Layer.effect は Effect の Layer メモ化により1回だけ評価されるため、
 // コネクションプールは起動時に1つ作られ、全リクエストで使い回される。
-// プールの上限を超えたリクエストは待ち行列に入るため、コネクション枯渇は起きない。
-// Vercel (serverless) ではプロセスが短命なため、destroy はプロセス終了時の
+// Vercel (serverless) ではプロセスが短命だと判断し、destroy はプロセス終了時の
 // OS によるソケット回収に任せている。
 
 const migrationProvider: MigrationProvider = {

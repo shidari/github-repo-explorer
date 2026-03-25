@@ -1,8 +1,7 @@
 import { ConfigProvider, Effect } from "effect";
-import { CompactSign } from "jose";
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
-import { proxyProgram } from "@/proxy";
+import { proxyProgram, signClientId } from "@/proxy";
 
 function createTestProxy(signingSecret = "test-token") {
   return Effect.runSync(
@@ -16,13 +15,8 @@ function createTestProxy(signingSecret = "test-token") {
   );
 }
 
-async function createSignedToken(
-  clientId: string,
-  secret: string,
-): Promise<string> {
-  return new CompactSign(new TextEncoder().encode(clientId))
-    .setProtectedHeader({ alg: "HS256" })
-    .sign(new TextEncoder().encode(secret));
+function createSignedToken(clientId: string, secret: string) {
+  return signClientId(clientId, new TextEncoder().encode(secret));
 }
 
 function createRequest({ path }: { path: string }) {

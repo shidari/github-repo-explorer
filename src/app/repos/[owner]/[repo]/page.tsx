@@ -17,28 +17,32 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function RepoDetailPage({ params }: Props) {
   const { owner, repo } = await params;
 
-  const result = await Effect.runPromise(
-    Effect.gen(function* () {
-      const query = yield* GetRepoByFullNameQuery;
-      return yield* query.runAction({ owner, repo });
-    }).pipe(
-      Effect.provide(
-        process.env.NODE_ENV === "production"
-          ? GetRepoByFullNameQuery.main
-          : GetRepoByFullNameQuery.test,
-      ),
-      Effect.match({
-        onSuccess: (data) => ({ ok: true as const, data }),
-        onFailure: (err) => {
-          console.error("[RepoDetailPage] failed to fetch repo:", {
-            owner,
-            repo,
-            error: err,
-          });
-          return { ok: false as const, error: err };
-        },
-      }),
+  const program = Effect.gen(function* () {
+    const query = yield* GetRepoByFullNameQuery;
+    return yield* query.runAction({ owner, repo });
+  });
+
+  const runnable = program.pipe(
+    Effect.provide(
+      process.env.NODE_ENV === "production"
+        ? GetRepoByFullNameQuery.main
+        : GetRepoByFullNameQuery.test,
     ),
+  );
+
+  const result = await runnable.pipe(
+    Effect.match({
+      onSuccess: (data) => ({ ok: true as const, data }),
+      onFailure: (err) => {
+        console.error("[RepoDetailPage] failed to fetch repo:", {
+          owner,
+          repo,
+          error: err,
+        });
+        return { ok: false as const, error: err };
+      },
+    }),
+    Effect.runPromise,
   );
 
   if (!result.ok) {

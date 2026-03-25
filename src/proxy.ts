@@ -5,7 +5,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 // ── JWS helpers ──
 
-async function signClientId(clientId: string, secret: Uint8Array) {
+export async function signClientId(clientId: string, secret: Uint8Array) {
   return new CompactSign(new TextEncoder().encode(clientId))
     .setProtectedHeader({ alg: "HS256" })
     .sign(secret);
