@@ -45,8 +45,6 @@ export default async function RepoDetailPage({ params }: Props) {
     Effect.runPromise,
   );
 
-
-
   if (!result.ok) {
     const message =
       result.error._tag === "RepoNotFoundError"
