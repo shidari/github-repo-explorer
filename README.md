@@ -2,7 +2,6 @@
 
 GitHub リポジトリの情報を検索・閲覧できる Web アプリケーション。
 
-**デプロイ**: https://github-repo-explorer-eta.vercel.app
 
 ## 目次
 
@@ -126,6 +125,7 @@ pnpm build         # プロダクションビルド
 
 - proxy
   - JWS cookie チャレンジ
+  - Challenge Rate Limit（Redis ロック + ランダム TTL による cookie 発行スロットリング）
 - API Routes（Hono）
   - GitHub Search API をラップしたリポジトリ検索エンドポイント
   - Token Bucket Rate Limit
@@ -275,6 +275,7 @@ src/
    GetRepoByFullNameQuery .main ← GitHub API      / .test ← モックデータ
    DB                     .main ← Vercel Postgres / .test ← PGlite
    RateLimitConfigTag     .main ← 本番設定        / .test ← テスト設定
+   ChallengeRateLimit     .main ← Upstash Redis   / .test ← インメモリ
    ```
 
 2. **Command パターン（AWS SDK v3 に着想）で Repository を操作単位にカプセル化**
@@ -288,14 +289,19 @@ src/
 6. **JWS 署名 cookie で per-client rate limit のバイパスを防止**
    - cookie なし（curl 等）は 425 で遮断。`curl -c/-b` で突破できるが、同一 UUID を使い回すため per-client rate limit が機能する
 
-   | | proxy（JWS cookie チャレンジ） | Hono ミドルウェア（Token Bucket） |
-   |---|---|---|
-   | **目的** | client_id 発行・非ブラウザクライアントの遮断 | GitHub API rate limit 保護 |
-   | **方式** | JWS 署名 cookie 発行・検証 + `x-client-id` 付与 | Token bucket（per-user + global） |
-   | **実行環境** | Next.js 16 `proxy.ts`（API ルートのみ） | Node.js Runtime |
-   | **ストレージ** | なし（ステートレス） | Vercel Postgres |
+   | | proxy（JWS cookie チャレンジ） | proxy（Challenge Rate Limit） | Hono ミドルウェア（Token Bucket） |
+   |---|---|---|---|
+   | **目的** | client_id 発行・非ブラウザクライアントの遮断 | cookie 使い捨て攻撃の緩和 | GitHub API rate limit 保護 |
+   | **方式** | JWS 署名 cookie 発行・検証 + `x-client-id` 付与 | Redis `SET NX PX` によるグローバルロック + ランダム TTL（3〜5秒） | Token bucket（per-user + global） |
+   | **実行環境** | Next.js 16 `proxy.ts`（API ルートのみ） | Next.js 16 `proxy.ts`（API ルートのみ） | Node.js Runtime |
+   | **ストレージ** | なし（ステートレス） | Upstash Redis | Vercel Postgres |
 
-7. **per-user + global の2層 Token Bucket**
+7. **Challenge Rate Limit で cookie 使い捨て攻撃を緩和**
+   - cookie を破棄して再取得を繰り返す攻撃に対し、cookie 発行のスループットを制限
+   - Redis の `SET NX PX` で同時に1件のみ cookie 発行を許可。TTL をランダム（3〜5秒）にし、攻撃者がロック解除タイミングを予測しにくくする
+   - 既に cookie を持っている正規ユーザーには影響なし（challenge rate limit を通らない）
+   - スループット: 平均 15 req/min（global の 20 req/min を超えない）
+8. **per-user + global の2層 Token Bucket**
    - ユーザーごとの公平性（per-user）と GitHub API quota の保護（global）を分離
    - per-user: `x-client-id` ヘッダー単位で1ユーザーの独占を防止
    - global: `client_id = "global"` の共有行でサーバー全体のリクエスト数を制限し、GitHub API の rate limit（認証あり: 30req/min）に対して安全マージンを持たせて 20req/min に設定
@@ -303,6 +309,7 @@ src/
      - 1人が連打 → per-user で制限（global は余裕あり）
      - 3人が同時に 10req/min ずつ → global で合計 20req/min に制限
      - 多数のユーザーが同時利用 → global が先に枯渇し、全ユーザーに 429。1人が使い切ると他ユーザーも影響を受けるが、per-user があるため1人の独占は防止される
+   - **既知の限界**: HTTP レベルでは「ブラウザである証明」はハードウェア証明（WebAuthn 等）を除き不可能で、本格的な対策は Cloudflare 等の専門サービスが必要な領域
 8. **Race Condition 対策**: Token bucket は `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` で1つの SQL 文に集約
    - トークンの読み取り・計算・書き込みを原子的に実行し、同時リクエストによる race condition を防止
 
