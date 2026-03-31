@@ -32,12 +32,15 @@ export class RateLimitConfigTag extends Context.Tag("RateLimitConfig")<
   });
 }
 
-// ── Service ──
+// ── Middleware ──
 
-export class RateLimitMiddleware extends Effect.Service<RateLimitMiddleware>()(
-  "RateLimitMiddleware",
-  {
-    effect: Effect.gen(function* () {
+export class RateLimitMiddleware extends Context.Tag("RateLimitMiddleware")<
+  RateLimitMiddleware,
+  { readonly middleware: MiddlewareHandler }
+>() {
+  static readonly main = Layer.effect(
+    RateLimitMiddleware,
+    Effect.gen(function* () {
       const { db } = yield* DB;
       const config = yield* RateLimitConfigTag;
 
@@ -108,5 +111,12 @@ export class RateLimitMiddleware extends Effect.Service<RateLimitMiddleware>()(
 
       return { middleware };
     }),
-  },
-) {}
+  );
+
+  // dev 環境用: rate limit を無効化（DB 不要）
+  static readonly noop = Layer.succeed(RateLimitMiddleware, {
+    middleware: async (_c, next) => {
+      await next();
+    },
+  });
+}

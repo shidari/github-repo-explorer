@@ -14,14 +14,14 @@ describe("rate limiter", () => {
     const app = await Effect.runPromise(
       mainAppProgram.pipe(
         Effect.provide(SearchApp.Default),
-        Effect.provide(RateLimitMiddleware.Default),
+        Effect.provide(RateLimitMiddleware.main),
         Effect.provide(
           Layer.succeed(RateLimitConfigTag, {
             perUser: { maxTokens: 3, refillRate: 0 },
             global: { maxTokens: 100, refillRate: 0 },
           }),
         ),
-        Effect.provide(DB.main),
+        Effect.provide(DB.ci),
         Effect.provide(SearchReposQuery.test),
       ),
     );
@@ -34,14 +34,14 @@ describe("rate limiter", () => {
     const app = await Effect.runPromise(
       mainAppProgram.pipe(
         Effect.provide(SearchApp.Default),
-        Effect.provide(RateLimitMiddleware.Default),
+        Effect.provide(RateLimitMiddleware.main),
         Effect.provide(
           Layer.succeed(RateLimitConfigTag, {
             perUser: { maxTokens: 3, refillRate: 0 },
             global: { maxTokens: 100, refillRate: 0 },
           }),
         ),
-        Effect.provide(DB.main),
+        Effect.provide(DB.ci),
         Effect.provide(SearchReposQuery.test),
       ),
     );
@@ -62,14 +62,14 @@ describe("rate limiter", () => {
     const app = await Effect.runPromise(
       mainAppProgram.pipe(
         Effect.provide(SearchApp.Default),
-        Effect.provide(RateLimitMiddleware.Default),
+        Effect.provide(RateLimitMiddleware.main),
         Effect.provide(
           Layer.succeed(RateLimitConfigTag, {
             perUser: { maxTokens: 2, refillRate: 1 },
             global: { maxTokens: 100, refillRate: 0 },
           }),
         ),
-        Effect.provide(DB.main),
+        Effect.provide(DB.ci),
         Effect.provide(SearchReposQuery.test),
       ),
     );
@@ -97,14 +97,14 @@ describe("rate limiter", () => {
     const app = await Effect.runPromise(
       mainAppProgram.pipe(
         Effect.provide(SearchApp.Default),
-        Effect.provide(RateLimitMiddleware.Default),
+        Effect.provide(RateLimitMiddleware.main),
         Effect.provide(
           Layer.succeed(RateLimitConfigTag, {
             perUser: { maxTokens: 100, refillRate: 0 },
             global: { maxTokens: 2, refillRate: 0 },
           }),
         ),
-        Effect.provide(DB.main),
+        Effect.provide(DB.ci),
         Effect.provide(SearchReposQuery.test),
       ),
     );

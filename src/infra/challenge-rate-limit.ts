@@ -5,31 +5,6 @@ export class ChallengeRateLimitError extends Data.TaggedError(
   "ChallengeRateLimitError",
 )<{ readonly cause: unknown }> {}
 
-// ── Redis Config ──
-
-export class ChallengeRedisConfig extends Context.Tag("ChallengeRedisConfig")<
-  ChallengeRedisConfig,
-  { readonly url: string; readonly token: string }
->() {
-  static readonly main = Layer.effect(
-    ChallengeRedisConfig,
-    Effect.gen(function* () {
-      const url = yield* Config.string("KV_REST_API_URL");
-      const token = yield* Config.string("KV_REST_API_TOKEN");
-      return { url, token };
-    }),
-  );
-
-  static readonly ci = Layer.effect(
-    ChallengeRedisConfig,
-    Effect.gen(function* () {
-      const url = yield* Config.string("CI_KV_REST_API_URL");
-      const token = yield* Config.string("CI_KV_REST_API_TOKEN");
-      return { url, token };
-    }),
-  );
-}
-
 // ── Challenge Rate Limit ──
 
 export class ChallengeRateLimit extends Context.Tag("ChallengeRateLimit")<
@@ -51,7 +26,8 @@ export class ChallengeRateLimit extends Context.Tag("ChallengeRateLimit")<
   static readonly main = Layer.effect(
     ChallengeRateLimit,
     Effect.gen(function* () {
-      const { url, token } = yield* ChallengeRedisConfig;
+      const url = yield* Config.string("KV_REST_API_URL");
+      const token = yield* Config.string("KV_REST_API_TOKEN");
       const redis = new Redis({ url, token });
 
       return {
@@ -70,7 +46,30 @@ export class ChallengeRateLimit extends Context.Tag("ChallengeRateLimit")<
     }),
   );
 
-  // Redis 未設定時（E2E / ローカル開発）は常に許可
+  static readonly ci = Layer.effect(
+    ChallengeRateLimit,
+    Effect.gen(function* () {
+      const url = yield* Config.string("CI_KV_REST_API_URL");
+      const token = yield* Config.string("CI_KV_REST_API_TOKEN");
+      const redis = new Redis({ url, token });
+
+      return {
+        acquire: () =>
+          Effect.tryPromise({
+            try: async () => {
+              const result = await redis.set("challenge_lock", 1, {
+                nx: true,
+                px: Math.round(ChallengeRateLimit.challengeTtlMs()),
+              });
+              return result === "OK";
+            },
+            catch: (cause) => new ChallengeRateLimitError({ cause }),
+          }),
+      };
+    }),
+  );
+
+  // dev 環境用: rate limit を無効化（Redis 不要）
   static readonly noop = Layer.succeed(ChallengeRateLimit, {
     acquire: () => Effect.succeed(true),
   });

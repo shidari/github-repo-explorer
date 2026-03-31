@@ -1,11 +1,8 @@
-import { Config, ConfigProvider, Effect, Layer } from "effect";
+import { Config, Effect } from "effect";
 import { CompactSign, compactVerify } from "jose";
 
 import { type NextRequest, NextResponse } from "next/server";
-import {
-  ChallengeRateLimit,
-  ChallengeRedisConfig,
-} from "@/infra/challenge-rate-limit";
+import { ChallengeRateLimit } from "@/infra/challenge-rate-limit";
 
 // ── JWS helpers ──
 
@@ -98,9 +95,8 @@ export const proxy = Effect.runSync(
     Effect.provide(
       process.env.NODE_ENV === "development"
         ? ChallengeRateLimit.noop
-        : Layer.provide(ChallengeRateLimit.main, ChallengeRedisConfig.main),
+        : ChallengeRateLimit.main,
     ),
-    Effect.withConfigProvider(ConfigProvider.fromEnv()),
   ),
 );
 

@@ -1,20 +1,12 @@
-import { ConfigProvider, Effect, Layer } from "effect";
+import { Effect } from "effect";
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
-import {
-  ChallengeRateLimit,
-  ChallengeRedisConfig,
-} from "@/infra/challenge-rate-limit";
+import { ChallengeRateLimit } from "@/infra/challenge-rate-limit";
 import { proxyProgram, signClientId } from "@/proxy";
 
 function createTestProxy() {
   return Effect.runSync(
-    proxyProgram.pipe(
-      Effect.provide(
-        Layer.provide(ChallengeRateLimit.main, ChallengeRedisConfig.ci),
-      ),
-      Effect.withConfigProvider(ConfigProvider.fromEnv()),
-    ),
+    proxyProgram.pipe(Effect.provide(ChallengeRateLimit.ci)),
   );
 }
 

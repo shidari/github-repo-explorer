@@ -1,5 +1,5 @@
 import { createKysely } from "@vercel/postgres-kysely";
-import { Context, Effect, Layer } from "effect";
+import { Config, Context, Effect, Layer } from "effect";
 import {
   type Kysely,
   type Migration,
@@ -38,9 +38,20 @@ export class DB extends Context.Tag("DB")<
 >() {
   static readonly main = Layer.effect(
     DB,
-    Effect.promise(async () => {
-      const db = createKysely<Database>();
-      await migrate(db);
+    Effect.gen(function* () {
+      const connectionString = yield* Config.string("POSTGRES_URL");
+      const db = createKysely<Database>({ connectionString });
+      yield* Effect.promise(() => migrate(db));
+      return { db };
+    }),
+  );
+
+  static readonly ci = Layer.effect(
+    DB,
+    Effect.gen(function* () {
+      const connectionString = yield* Config.string("CI_POSTGRES_URL");
+      const db = createKysely<Database>({ connectionString });
+      yield* Effect.promise(() => migrate(db));
       return { db };
     }),
   );
