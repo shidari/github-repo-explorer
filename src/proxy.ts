@@ -2,6 +2,10 @@ import { Config, ConfigProvider, Effect } from "effect";
 import { CompactSign, compactVerify } from "jose";
 
 import { type NextRequest, NextResponse } from "next/server";
+import {
+  ChallengeRateLimit,
+  ChallengeRedisConfig,
+} from "@/infra/challenge-rate-limit";
 
 // ── JWS helpers ──
 
@@ -19,25 +23,38 @@ async function verifyClientId(token: string, secret: Uint8Array) {
 // ── ProxyProgram ──
 
 export const proxyProgram = Effect.gen(function* () {
-  // client_id cookie の JWS 署名・検証に使う鍵。未設定時（dev / CI）は "test-token" をデフォルト値とする
   const rawSecret = yield* Config.string("CLIENT_ID_SIGNING_SECRET").pipe(
     Config.withDefault("test-token"),
   );
   const signingSecret = new TextEncoder().encode(rawSecret);
 
+  const challengeRateLimit = yield* ChallengeRateLimit;
+
   const proxy = async (request: NextRequest): Promise<NextResponse> => {
-    // /api 以外はそのまま通す
     if (!request.nextUrl.pathname.startsWith("/api")) {
       return NextResponse.next();
     }
 
     try {
-      // client_id cookie の JWS 署名を検証し、改ざんされていない場合のみ使い回す
       const clientId = request.cookies.get("client_id")?.value;
 
-      // 初回訪問・シークレットブラウザ等、cookie がない場合は cookie を発行して再試行を要求する。
-      // cookie を自動送信しないクライアント（curl 等）はここで弾かれ、per-client rate limit のバイパスを防ぐ。
       if (clientId === undefined) {
+        // チャレンジの同時実行数を制限（cookie 使い捨て攻撃対策）
+        const allowed = await Effect.runPromise(
+          challengeRateLimit.acquire().pipe(
+            Effect.catchTag("ChallengeRateLimitError", (e) => {
+              console.error("[ChallengeRateLimit]", e.cause);
+              return Effect.succeed(false);
+            }),
+          ),
+        );
+        if (!allowed) {
+          return NextResponse.json(
+            { message: "Too Many Requests" },
+            { status: 429 },
+          );
+        }
+
         const newId = crypto.randomUUID();
         const token = await signClientId(newId, signingSecret);
         const response = NextResponse.json(
@@ -77,7 +94,11 @@ export const proxyProgram = Effect.gen(function* () {
 // ── Proxy ──
 
 export const proxy = Effect.runSync(
-  proxyProgram.pipe(Effect.withConfigProvider(ConfigProvider.fromEnv())),
+  proxyProgram.pipe(
+    Effect.provide(ChallengeRateLimit.main),
+    Effect.provide(ChallengeRedisConfig.main),
+    Effect.withConfigProvider(ConfigProvider.fromEnv()),
+  ),
 );
 
 export const config = {

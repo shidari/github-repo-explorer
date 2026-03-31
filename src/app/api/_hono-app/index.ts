@@ -48,7 +48,7 @@ const runnable = mainAppProgram.pipe(
   Effect.provide(SearchApp.Default),
   Effect.provide(RateLimitMiddleware.Default),
   Effect.provide(RateLimitConfigTag.main),
-  Effect.provide(process.env.NODE_ENV === "production" ? DB.main : DB.test),
+  Effect.provide(DB.main),
   Effect.provide(
     process.env.NODE_ENV === "production"
       ? SearchReposQuery.main

@@ -1,16 +1,18 @@
 import { ConfigProvider, Effect } from "effect";
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
+import {
+  ChallengeRateLimit,
+  ChallengeRedisConfig,
+} from "@/infra/challenge-rate-limit";
 import { proxyProgram, signClientId } from "@/proxy";
 
-function createTestProxy(signingSecret = "test-token") {
+function createTestProxy() {
   return Effect.runSync(
     proxyProgram.pipe(
-      Effect.withConfigProvider(
-        ConfigProvider.fromMap(
-          new Map([["CLIENT_ID_SIGNING_SECRET", signingSecret]]),
-        ),
-      ),
+      Effect.provide(ChallengeRateLimit.main),
+      Effect.provide(ChallengeRedisConfig.ci),
+      Effect.withConfigProvider(ConfigProvider.fromEnv()),
     ),
   );
 }
@@ -68,5 +70,18 @@ describe("JWS cookie チャレンジ", () => {
 
     const response = await proxy(request);
     expect(response.status).toBe(200);
+  });
+});
+
+describe("Challenge Rate Limit", () => {
+  it("同時チャレンジ数の上限を超えると 429 を返す", async () => {
+    const proxy = createTestProxy();
+    const req1 = createRequest({ path: "/api/search?q=react" });
+    const req2 = createRequest({ path: "/api/search?q=react" });
+
+    const [res1, res2] = await Promise.all([proxy(req1), proxy(req2)]);
+    const statuses = [res1.status, res2.status].sort();
+
+    expect(statuses).toEqual([425, 429]);
   });
 });

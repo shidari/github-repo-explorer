@@ -21,7 +21,7 @@ describe("rate limiter", () => {
             global: { maxTokens: 100, refillRate: 0 },
           }),
         ),
-        Effect.provide(DB.test),
+        Effect.provide(DB.main),
         Effect.provide(SearchReposQuery.test),
       ),
     );
@@ -41,7 +41,7 @@ describe("rate limiter", () => {
             global: { maxTokens: 100, refillRate: 0 },
           }),
         ),
-        Effect.provide(DB.test),
+        Effect.provide(DB.main),
         Effect.provide(SearchReposQuery.test),
       ),
     );
@@ -69,7 +69,7 @@ describe("rate limiter", () => {
             global: { maxTokens: 100, refillRate: 0 },
           }),
         ),
-        Effect.provide(DB.test),
+        Effect.provide(DB.main),
         Effect.provide(SearchReposQuery.test),
       ),
     );
@@ -109,7 +109,7 @@ describe("rate limiter", () => {
             global: { maxTokens: 2, refillRate: 0 },
           }),
         ),
-        Effect.provide(DB.test),
+        Effect.provide(DB.main),
         Effect.provide(SearchReposQuery.test),
       ),
     );
