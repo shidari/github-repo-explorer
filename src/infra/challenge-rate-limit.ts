@@ -69,4 +69,9 @@ export class ChallengeRateLimit extends Context.Tag("ChallengeRateLimit")<
       };
     }),
   );
+
+  // Redis 未設定時（E2E / ローカル開発）は常に許可
+  static readonly noop = Layer.succeed(ChallengeRateLimit, {
+    acquire: () => Effect.succeed(true),
+  });
 }

@@ -1,4 +1,4 @@
-import { Config, ConfigProvider, Effect } from "effect";
+import { Config, ConfigProvider, Effect, Layer } from "effect";
 import { CompactSign, compactVerify } from "jose";
 
 import { type NextRequest, NextResponse } from "next/server";
@@ -95,8 +95,11 @@ export const proxyProgram = Effect.gen(function* () {
 
 export const proxy = Effect.runSync(
   proxyProgram.pipe(
-    Effect.provide(ChallengeRateLimit.main),
-    Effect.provide(ChallengeRedisConfig.main),
+    Effect.provide(
+      process.env.NODE_ENV === "development"
+        ? ChallengeRateLimit.noop
+        : Layer.provide(ChallengeRateLimit.main, ChallengeRedisConfig.main),
+    ),
     Effect.withConfigProvider(ConfigProvider.fromEnv()),
   ),
 );

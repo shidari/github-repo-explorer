@@ -276,7 +276,7 @@ src/
    DB                     .main ← Vercel Postgres (Neon)
    RateLimitConfigTag     .main ← 本番設定        / .test ← テスト設定
    ChallengeRedisConfig   .main ← KV_REST_API_*   / .ci  ← CI_KV_REST_API_*
-   ChallengeRateLimit     .main ← Upstash Redis
+   ChallengeRateLimit     .main ← Upstash Redis    / .noop ← 無効化（dev 環境）
    ```
 
 2. **Command パターン（AWS SDK v3 に着想）で Repository を操作単位にカプセル化**
