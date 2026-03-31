@@ -10,7 +10,7 @@
     "start": "next start",
     "test": "vitest run",
     "test:local": "vitest run --exclude 'src/__tests__/ci/**'",
-    "test:ci": "vitest run --include 'src/__tests__/ci/**'",
+    "test:ci": "vitest run src/__tests__/ci",
     "type-check": "tsc --noEmit",
     "lint": "biome check",
     "format": "biome format --write",
