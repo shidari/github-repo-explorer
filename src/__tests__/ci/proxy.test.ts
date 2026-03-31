@@ -1,4 +1,4 @@
-import { ConfigProvider, Effect } from "effect";
+import { ConfigProvider, Effect, Layer } from "effect";
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 import {
@@ -10,8 +10,9 @@ import { proxyProgram, signClientId } from "@/proxy";
 function createTestProxy() {
   return Effect.runSync(
     proxyProgram.pipe(
-      Effect.provide(ChallengeRateLimit.main),
-      Effect.provide(ChallengeRedisConfig.ci),
+      Effect.provide(
+        Layer.provide(ChallengeRateLimit.main, ChallengeRedisConfig.ci),
+      ),
       Effect.withConfigProvider(ConfigProvider.fromEnv()),
     ),
   );

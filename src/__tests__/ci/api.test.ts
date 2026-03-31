@@ -1,5 +1,5 @@
 import { Effect, Layer } from "effect";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { mainAppProgram } from "@/app/api/_hono-app";
 import {
   RateLimitConfigTag,
@@ -74,9 +74,6 @@ describe("rate limiter", () => {
       ),
     );
 
-    const now = Date.now();
-    vi.setSystemTime(now);
-
     const clientId = crypto.randomUUID();
     const headers = { "x-client-id": clientId };
 
@@ -89,14 +86,12 @@ describe("rate limiter", () => {
     const third = await app.request("/api/search?q=react", { headers });
     expect(third.status).toBe(429);
 
-    // 2 秒進める → 2 トークン回復
-    vi.setSystemTime(now + 2000);
+    // 実際に 2 秒待ってトークン回復を確認（本物の Postgres の now() に依存）
+    await new Promise((r) => setTimeout(r, 2500));
 
     const fourth = await app.request("/api/search?q=react", { headers });
     expect(fourth.status).toBe(200);
-
-    vi.useRealTimers();
-  });
+  }, 10000);
 
   it("グローバルレートリミットを超えたら 429 を返す", async () => {
     const app = await Effect.runPromise(
