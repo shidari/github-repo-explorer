@@ -1,6 +1,6 @@
 import { Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
-import { mainAppProgram } from "@/app/api/_hono-app";
+import { mainAppProgram } from "@/app/api/_hono-app/_appBuilder";
 import {
   RateLimitConfigTag,
   RateLimitMiddleware,

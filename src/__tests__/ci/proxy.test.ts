@@ -1,8 +1,22 @@
+import { Redis } from "@upstash/redis";
 import { Effect } from "effect";
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { proxyProgram, signClientId } from "@/_proxyBuilder";
 import { ChallengeRateLimit } from "@/infra/challenge-rate-limit";
+
+if (!process.env.CI_KV_REST_API_URL || !process.env.CI_KV_REST_API_TOKEN) {
+  throw new Error("CI_KV_REST_API_URL and CI_KV_REST_API_TOKEN are required");
+}
+
+const redis = new Redis({
+  url: process.env.CI_KV_REST_API_URL,
+  token: process.env.CI_KV_REST_API_TOKEN,
+});
+
+beforeEach(async () => {
+  await redis.del("challenge_lock");
+});
 
 function createTestProxy() {
   return Effect.runSync(
