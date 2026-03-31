@@ -9,6 +9,8 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
+    "test:local": "vitest run --exclude 'src/__tests__/ci/**'",
+    "test:ci": "vitest run src/__tests__/ci",
     "type-check": "tsc --noEmit",
     "lint": "biome check",
     "format": "biome format --write",
@@ -17,12 +19,12 @@
     "codegen:db": "bash src/infra/scripts/codegen.sh"
   },
   "dependencies": {
-    "@electric-sql/pglite": "0.3.16",
     "@hono/effect-validator": "1.2.0",
     "@hono/standard-validator": "0.2.2",
     "@hono/swagger-ui": "0.6.1",
     "@octokit/request-error": "7.1.0",
     "@octokit/rest": "22.0.1",
+    "@upstash/redis": "1.37.0",
     "@vercel/postgres": "0.10.0",
     "@vercel/postgres-kysely": "0.10.0",
     "effect": "3.20.0",

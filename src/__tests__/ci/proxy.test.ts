@@ -1,17 +1,26 @@
-import { ConfigProvider, Effect } from "effect";
+import { Redis } from "@upstash/redis";
+import { Effect } from "effect";
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
-import { proxyProgram, signClientId } from "@/proxy";
+import { beforeEach, describe, expect, it } from "vitest";
+import { proxyProgram, signClientId } from "@/_proxyBuilder";
+import { ChallengeRateLimit } from "@/infra/challenge-rate-limit";
 
-function createTestProxy(signingSecret = "test-token") {
+if (!process.env.CI_KV_REST_API_URL || !process.env.CI_KV_REST_API_TOKEN) {
+  throw new Error("CI_KV_REST_API_URL and CI_KV_REST_API_TOKEN are required");
+}
+
+const redis = new Redis({
+  url: process.env.CI_KV_REST_API_URL,
+  token: process.env.CI_KV_REST_API_TOKEN,
+});
+
+beforeEach(async () => {
+  await redis.del("challenge_lock");
+});
+
+function createTestProxy() {
   return Effect.runSync(
-    proxyProgram.pipe(
-      Effect.withConfigProvider(
-        ConfigProvider.fromMap(
-          new Map([["CLIENT_ID_SIGNING_SECRET", signingSecret]]),
-        ),
-      ),
-    ),
+    proxyProgram.pipe(Effect.provide(ChallengeRateLimit.ci)),
   );
 }
 
@@ -68,5 +77,18 @@ describe("JWS cookie チャレンジ", () => {
 
     const response = await proxy(request);
     expect(response.status).toBe(200);
+  });
+});
+
+describe("Challenge Rate Limit", () => {
+  it("同時チャレンジ数の上限を超えると 429 を返す", async () => {
+    const proxy = createTestProxy();
+    const req1 = createRequest({ path: "/api/search?q=react" });
+    const req2 = createRequest({ path: "/api/search?q=react" });
+
+    const [res1, res2] = await Promise.all([proxy(req1), proxy(req2)]);
+    const statuses = [res1.status, res2.status].sort();
+
+    expect(statuses).toEqual([425, 429]);
   });
 });

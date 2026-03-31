@@ -1,6 +1,6 @@
 import { Effect, Layer } from "effect";
-import { describe, expect, it, vi } from "vitest";
-import { mainAppProgram } from "@/app/api/_hono-app";
+import { beforeEach, describe, expect, it } from "vitest";
+import { mainAppProgram } from "@/app/api/_hono-app/_appBuilder";
 import {
   RateLimitConfigTag,
   RateLimitMiddleware,
@@ -9,19 +9,28 @@ import { SearchApp } from "@/app/api/_hono-app/search";
 import { DB } from "@/infra/db";
 import { SearchReposQuery } from "@/repository/query";
 
+beforeEach(async () => {
+  await Effect.runPromise(
+    Effect.gen(function* () {
+      const { db } = yield* DB;
+      yield* Effect.promise(() => db.deleteFrom("token_buckets").execute());
+    }).pipe(Effect.provide(DB.ci)),
+  );
+});
+
 describe("rate limiter", () => {
   it("レートリミット内のリクエストは 200 を返す", async () => {
     const app = await Effect.runPromise(
       mainAppProgram.pipe(
         Effect.provide(SearchApp.Default),
-        Effect.provide(RateLimitMiddleware.Default),
+        Effect.provide(RateLimitMiddleware.main),
         Effect.provide(
           Layer.succeed(RateLimitConfigTag, {
             perUser: { maxTokens: 3, refillRate: 0 },
             global: { maxTokens: 100, refillRate: 0 },
           }),
         ),
-        Effect.provide(DB.test),
+        Effect.provide(DB.ci),
         Effect.provide(SearchReposQuery.test),
       ),
     );
@@ -34,14 +43,14 @@ describe("rate limiter", () => {
     const app = await Effect.runPromise(
       mainAppProgram.pipe(
         Effect.provide(SearchApp.Default),
-        Effect.provide(RateLimitMiddleware.Default),
+        Effect.provide(RateLimitMiddleware.main),
         Effect.provide(
           Layer.succeed(RateLimitConfigTag, {
             perUser: { maxTokens: 3, refillRate: 0 },
             global: { maxTokens: 100, refillRate: 0 },
           }),
         ),
-        Effect.provide(DB.test),
+        Effect.provide(DB.ci),
         Effect.provide(SearchReposQuery.test),
       ),
     );
@@ -62,20 +71,17 @@ describe("rate limiter", () => {
     const app = await Effect.runPromise(
       mainAppProgram.pipe(
         Effect.provide(SearchApp.Default),
-        Effect.provide(RateLimitMiddleware.Default),
+        Effect.provide(RateLimitMiddleware.main),
         Effect.provide(
           Layer.succeed(RateLimitConfigTag, {
             perUser: { maxTokens: 2, refillRate: 1 },
             global: { maxTokens: 100, refillRate: 0 },
           }),
         ),
-        Effect.provide(DB.test),
+        Effect.provide(DB.ci),
         Effect.provide(SearchReposQuery.test),
       ),
     );
-
-    const now = Date.now();
-    vi.setSystemTime(now);
 
     const clientId = crypto.randomUUID();
     const headers = { "x-client-id": clientId };
@@ -89,27 +95,25 @@ describe("rate limiter", () => {
     const third = await app.request("/api/search?q=react", { headers });
     expect(third.status).toBe(429);
 
-    // 2 秒進める → 2 トークン回復
-    vi.setSystemTime(now + 2000);
+    // 実際に 2 秒待ってトークン回復を確認（本物の Postgres の now() に依存）
+    await new Promise((r) => setTimeout(r, 2500));
 
     const fourth = await app.request("/api/search?q=react", { headers });
     expect(fourth.status).toBe(200);
-
-    vi.useRealTimers();
-  });
+  }, 10000);
 
   it("グローバルレートリミットを超えたら 429 を返す", async () => {
     const app = await Effect.runPromise(
       mainAppProgram.pipe(
         Effect.provide(SearchApp.Default),
-        Effect.provide(RateLimitMiddleware.Default),
+        Effect.provide(RateLimitMiddleware.main),
         Effect.provide(
           Layer.succeed(RateLimitConfigTag, {
             perUser: { maxTokens: 100, refillRate: 0 },
             global: { maxTokens: 2, refillRate: 0 },
           }),
         ),
-        Effect.provide(DB.test),
+        Effect.provide(DB.ci),
         Effect.provide(SearchReposQuery.test),
       ),
     );

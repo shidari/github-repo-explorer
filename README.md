@@ -266,16 +266,17 @@ src/
 1. **Effect TS とクリーンアーキテクチャを組み合わせ、依存の方向を内側に限定**
    - Effect Schema でバリデーションと型推論を一元化し、DTO で各レイヤーの責務を明示
    - Effect の Layer によりレイヤー単位の DI が簡単に行え、テストしやすい構造を実現
-   - 環境変数でレイヤーを一括切り替え（テスト時は GitHub API・外部 DB に依存せず動作）
+   - 環境変数でレイヤーを一括切り替え（テスト時は GitHub API に依存せず動作）
    - 開発初期はモックで開発し、GitHub API の rate limit を消費しない安全なフロー
    - モックデータは E2E テストにもそのまま流用
 
    ```
    SearchReposQuery       .main ← GitHub API      / .test ← モックデータ
    GetRepoByFullNameQuery .main ← GitHub API      / .test ← モックデータ
-   DB                     .main ← Vercel Postgres / .test ← PGlite
+   DB                     .main ← Vercel Postgres (Neon)
    RateLimitConfigTag     .main ← 本番設定        / .test ← テスト設定
-   ChallengeRateLimit     .main ← Upstash Redis   / .test ← インメモリ
+   ChallengeRedisConfig   .main ← KV_REST_API_*   / .ci  ← CI_KV_REST_API_*
+   ChallengeRateLimit     .main ← Upstash Redis    / .noop ← 無効化（dev 環境）
    ```
 
 2. **Command パターン（AWS SDK v3 に着想）で Repository を操作単位にカプセル化**
@@ -321,15 +322,17 @@ src/
 
 | 層 | ツール | 対象 |
 |---|--------|------|
-| 統合 | Vitest | API Routes のリクエスト/レスポンス検証（レイヤーを差し替えて Hono アプリ全体をテスト） |
-| プロパティベース | FastCheck | スキーマの変換は性質として記述しやすいため採用。Star 数の表示（1000 → 1.0k、1M+）等の境界値検証、ページネーションの表示パターン検証にも活用 |
+| 統合（CI） | Vitest (`test:ci`) | API Routes・proxy の統合テスト。本物の Upstash Redis + Vercel Postgres (Neon) に対して実行 |
+| ローカル | Vitest (`test:local`) | プロパティベーステスト・スキーマ検証等。外部サービス不要 |
 | E2E | Playwright | 最低動作要件を仕様として fix し、ユーザーフローで検証。UI は未 fix のためテスト対象外（メンテコスト考慮） |
 | コンポーネント | Storybook | UI コンポーネントの手動検証（カタログで状態パターンを確認） |
 | 手動 | — | 自動化が難しい・仕様として未 fix の項目（下記参照） |
 
-- CI（GitHub Actions）で check（lint + 型チェック + ユニットテスト）と E2E を並列実行
+- CI（GitHub Actions）で check（lint + 型チェック + ローカルテスト）、統合テスト、E2E を並列実行
   - PR・main ブランチの両方で CI を回し、本番でエラーが起きにくい状態を維持
   - E2E はモックデータで動作するため、GitHub API の rate limit やネットワーク状態に依存しない
+  - 統合テスト（`test:ci`）は本物の Redis / Postgres に対して実行し、PGlite やインメモリモックとの乖離を排除
+  - Upstash Redis は Free プラン（1インスタンス制限）のため、CI と本番で同一インスタンスを共有（キー名で分離）
 
 ### 手動テスト項目
 
