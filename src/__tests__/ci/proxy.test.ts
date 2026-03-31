@@ -1,8 +1,8 @@
 import { Effect } from "effect";
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
+import { proxyProgram, signClientId } from "@/_proxyBuilder";
 import { ChallengeRateLimit } from "@/infra/challenge-rate-limit";
-import { proxyProgram, signClientId } from "@/proxy";
 
 function createTestProxy() {
   return Effect.runSync(
