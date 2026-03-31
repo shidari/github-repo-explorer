@@ -1,5 +1,5 @@
 import { Effect, Layer } from "effect";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { mainAppProgram } from "@/app/api/_hono-app/_appBuilder";
 import {
   RateLimitConfigTag,
@@ -8,6 +8,15 @@ import {
 import { SearchApp } from "@/app/api/_hono-app/search";
 import { DB } from "@/infra/db";
 import { SearchReposQuery } from "@/repository/query";
+
+beforeEach(async () => {
+  await Effect.runPromise(
+    Effect.gen(function* () {
+      const { db } = yield* DB;
+      yield* Effect.promise(() => db.deleteFrom("token_buckets").execute());
+    }).pipe(Effect.provide(DB.ci)),
+  );
+});
 
 describe("rate limiter", () => {
   it("レートリミット内のリクエストは 200 を返す", async () => {
